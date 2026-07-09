@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "phone_id": "YOUR_PHONE_NUMBER_ID",
+    "access_token": "YOUR_ACCESS_TOKEN",
+    "to_numbers": [
+      "+34 678 123 456"
+    ]
+  }
+}

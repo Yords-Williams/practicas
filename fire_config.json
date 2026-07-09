@@ -1,0 +1,18 @@
+{
+  "threshold": 0.12,
+  "min_area": 180,
+  "cooldown_seconds": 60,
+  "report_recipients": {
+    "emails": [
+      "admin@example.com"
+    ],
+    "phones": [
+      "+1234567890"
+    ]
+  },
+  "notifications": {
+    "telegram": false,
+    "email": false,
+    "whatsapp": false
+  }
+}

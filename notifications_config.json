@@ -1,0 +1,72 @@
+{
+  "whatsapp_simple": {
+    "to_numbers": [
+      "+51930240476"
+    ],
+    "delay_seconds": 20,
+    "time_out": 15
+  },
+  "whatsapp_selenium": {
+    "to_numbers": [
+      "+51930240476"
+    ],
+    "wait_time": 10,
+    "message_delay": 2
+  },
+  "telegram": {
+    "enabled": true,
+    "token": "8838074575:AAFIsLMKY_UJYNzHNKWiMcAKZJtZXegv3MA",
+    "chat_ids": [
+      "7973977029"
+    ]
+  },
+  "gmail": {
+    "sender": "yordswcm@gmail.com",
+    "app_password": "qtrk pxjv fhhw luxg",
+    "to_emails": [
+      "closbtep@gmail.com"
+    ],
+    "include_frame": true
+  },
+  "twilio": {
+    "enabled": true,
+    "account_sid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "auth_token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "from_number": "+1 201 555 0123",
+    "to_numbers": [
+      "+34 678 123 456"
+    ],
+    "template": "🚨 ALERTA DE {tipo}: {camera}\n{details}"
+  },
+  "email": {
+    "enabled": false,
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender": "your_email@gmail.com",
+    "password": "your_app_password",
+    "recipients": [
+      "recipient@example.com"
+    ]
+  },
+  "alert_types": {
+    "accident": {
+      "enabled": true,
+      "channels": [
+        "twilio"
+      ]
+    },
+    "person": {
+      "enabled": true,
+      "channels": [
+        "twilio"
+      ]
+    },
+    "theft": {
+      "enabled": true,
+      "channels": [
+        "twilio"
+      ]
+    }
+  },
+  "cooldown_seconds": 60
+}

@@ -1,0 +1,11 @@
+cat > .gitignore << EOF
+venv311/
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+*.db
+chrome_profile/
+*.log
+EOF

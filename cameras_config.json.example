@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Cámara Entrada",
+    "url": "rtsp://usuario:contraseña@192.168.1.100:554/stream"
+  },
+  {
+    "name": "Cámara Parqueo",
+    "url": "rtsp://usuario:contraseña@192.168.1.101:554/stream"
+  }
+]

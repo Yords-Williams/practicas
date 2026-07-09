@@ -1,0 +1,13 @@
+numpy
+opencv-python
+ultralytics
+torch
+torchvision
+PySide6
+pyinstaller
+torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pillow
+qt-material
+wheel setuptools
+onnxruntime-gpu
+openpyxl

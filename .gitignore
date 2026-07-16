@@ -1,0 +1,41 @@
+# ── Entorno virtual ────────────────────────────────────────────────────────────
+practicas/
+venv311/
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+*.log
+
+# ── Build / dist ───────────────────────────────────────────────────────────────
+dist/
+build/
+*.spec.bak
+
+# ── Word / Excel (excepto manual de usuario) ──────────────────────────────────
+*.docx
+*.xlsx
+!docs/MANUAL_USUARIO_v2.docx
+
+# ── Configuraciones con credenciales ──────────────────────────────────────────
+cameras_config.json
+notifications_config.json
+meta_whatsapp_config.json
+
+# ── Base de datos local ───────────────────────────────────────────────────────
+*.db
+chrome_profile/
+PyWhatKit_DB.txt
+
+# ── Datasets y videos de entrenamiento (demasiado grandes) ───────────────────
+modulos/robo/X3D_Videos/
+modulos/incendio/datasets/
+modulos/incendio/YOLOv8-Fire-and-Smoke-Detection-main/
+
+# ── IDE / OS ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

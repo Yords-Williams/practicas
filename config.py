@@ -1,6 +1,6 @@
 """
 Configuración centralizada para CCTV AI PRO
-Optimizada para: NVIDIA Quadro P1000 + Intel Core i7-10700
+Optimizada para: NVIDIA Quadro P1000 4 GB + Intel Core i7-10700 (16 cámaras)
 """
 
 import os
@@ -45,14 +45,14 @@ CAMERAS_CONFIG = [
 ]
 
 # ============================================================================
-# OPTIMIZACIONES PARA NVIDIA QUADRO P1000 + i7-10700
+# PERFIL PARA NVIDIA QUADRO P1000 4 GB + i7-10700 / 16 CÁMARAS
 # ============================================================================
 
 # Hardware detectado
 HARDWARE = {
-    "gpu": "NVIDIA Quadro P1000 (2GB VRAM)",
+    "gpu": "NVIDIA Quadro P1000 (4GB VRAM)",
     "cpu": "Intel Core i7-10700 (8 cores/16 threads)",
-    "vram": 2000,  # MB
+    "vram": 4096,  # MB
     "cpu_cores": 8,
 }
 
@@ -61,9 +61,11 @@ DETECTION_CONFIG = {
     "confidence_threshold": 0.45,           # Balance velocidad/precisión
     "device": 0,                            # GPU: 0 (CUDA), CPU: "cpu"
     "device_type": "cuda",                  # "cuda" o "cpu"
-    "fps_limit": 25,                        # 25 FPS para Quadro P1000
+    # La interfaz refresca a 10 FPS. Con 16 fuentes, prioriza fluidez y
+    # estabilidad de VRAM frente a intentar inferir 16 × 25 FPS.
+    "fps_limit": 10,
     "frame_resize": (384, 216),             # Optimizado (16:9, divisible por 32)
-    "batch_size": 1,                        # Quadro P1000 con 2GB: procesar de a 1
+    "batch_size": 1,                        # Inferencia serial: evita picos de VRAM
     "workers": 4,                           # CPU workers (mitad de cores)
     "half_precision": True,                 # FP16 para acelerar GPU
     "iou_threshold": 0.45,                  # IoU para NMS
@@ -105,20 +107,25 @@ THEFT_DETECTION_CONFIG = {
 
 # Threading y paralelismo
 THREADING_CONFIG = {
-    "max_capture_threads": 6,               # Máximo 6 cámaras simultáneas
+    "max_cameras": 16,                      # Límite total de fuentes configurables
+    "grid_columns": 4,                      # Mosaico 4 × 4
+    "max_capture_threads": 16,              # Un hilo ligero de captura por cámara
     "detector_threads": 1,                  # 1 thread para detector (GPU)
     "enable_async": True,                   # Captura asíncrona
+    # Se analiza una cámara por tick, rotando por las 16. Esto evita ejecutar
+    # varios modelos YOLO a la vez en una GPU de 4 GB.
+    "analysis_cameras_per_tick": 1,
 }
 
 # Optimizaciones para CPU
 CPU_OPTIMIZATION = {
     "OPENBLAS_NUM_THREADS": "1",
-    "OMP_NUM_THREADS": "2",                 # Usar 2 threads (no todos los 8)
-    "MKL_NUM_THREADS": "2",
+    "OMP_NUM_THREADS": "4",
+    "MKL_NUM_THREADS": "4",
     "MKL_DYNAMIC": "FALSE",
     "OMP_DYNAMIC": "FALSE",
     "OMP_WAIT_POLICY": "PASSIVE",
-    "OMP_PLACES": "cores(2)",
+    "OMP_PLACES": "cores(4)",
 }
 
 def print_config():
@@ -149,4 +156,3 @@ def print_config():
 
 if __name__ == "__main__":
     print_config()
-

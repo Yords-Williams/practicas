@@ -1,0 +1,311 @@
+﻿git : Enumerating objects: 79, done.
+En línea: 1 Carácter: 1
++ git -C "C:\Users\VICTUS\Videos\practicas" push origin main --force -- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Enumerating objects: 79, done.:St 
+   ring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Counting objects:   1% (1/79)
+Counting objects:   2% (2/79)
+Counting objects:   3% (3/79)
+Counting objects:   5% (4/79)
+Counting objects:   6% (5/79)
+Counting objects:   7% (6/79)
+Counting objects:   8% (7/79)
+Counting objects:  10% (8/79)
+Counting objects:  11% (9/79)
+Counting objects:  12% (10/79)
+Counting objects:  13% (11/79)
+Counting objects:  15% (12/79)
+Counting objects:  16% (13/79)
+Counting objects:  17% (14/79)
+Counting objects:  18% (15/79)
+Counting objects:  20% (16/79)
+Counting objects:  21% (17/79)
+Counting objects:  22% (18/79)
+Counting objects:  24% (19/79)
+Counting objects:  25% (20/79)
+Counting objects:  26% (21/79)
+Counting objects:  27% (22/79)
+Counting objects:  29% (23/79)
+Counting objects:  30% (24/79)
+Counting objects:  31% (25/79)
+Counting objects:  32% (26/79)
+Counting objects:  34% (27/79)
+Counting objects:  35% (28/79)
+Counting objects:  36% (29/79)
+Counting objects:  37% (30/79)
+Counting objects:  39% (31/79)
+Counting objects:  40% (32/79)
+Counting objects:  41% (33/79)
+Counting objects:  43% (34/79)
+Counting objects:  44% (35/79)
+Counting objects:  45% (36/79)
+Counting objects:  46% (37/79)
+Counting objects:  48% (38/79)
+Counting objects:  49% (39/79)
+Counting objects:  50% (40/79)
+Counting objects:  51% (41/79)
+Counting objects:  53% (42/79)
+Counting objects:  54% (43/79)
+Counting objects:  55% (44/79)
+Counting objects:  56% (45/79)
+Counting objects:  58% (46/79)
+Counting objects:  59% (47/79)
+Counting objects:  60% (48/79)
+Counting objects:  62% (49/79)
+Counting objects:  63% (50/79)
+Counting objects:  64% (51/79)
+Counting objects:  65% (52/79)
+Counting objects:  67% (53/79)
+Counting objects:  68% (54/79)
+Counting objects:  69% (55/79)
+Counting objects:  70% (56/79)
+Counting objects:  72% (57/79)
+Counting objects:  73% (58/79)
+Counting objects:  74% (59/79)
+Counting objects:  75% (60/79)
+Counting objects:  77% (61/79)
+Counting objects:  78% (62/79)
+Counting objects:  79% (63/79)
+Counting objects:  81% (64/79)
+Counting objects:  82% (65/79)
+Counting objects:  83% (66/79)
+Counting objects:  84% (67/79)
+Counting objects:  86% (68/79)
+Counting objects:  87% (69/79)
+Counting objects:  88% (70/79)
+Counting objects:  89% (71/79)
+Counting objects:  91% (72/79)
+Counting objects:  92% (73/79)
+Counting objects:  93% (74/79)
+Counting objects:  94% (75/79)
+Counting objects:  96% (76/79)
+Counting objects:  97% (77/79)
+Counting objects:  98% (78/79)
+Counting objects: 100% (79/79)
+Counting objects: 100% (79/79), done.
+Delta compression using up to 12 threads
+Compressing objects:   1% (1/78)
+Compressing objects:   2% (2/78)
+Compressing objects:   3% (3/78)
+Compressing objects:   5% (4/78)
+Compressing objects:   6% (5/78)
+Compressing objects:   7% (6/78)
+Compressing objects:   8% (7/78)
+Compressing objects:  10% (8/78)
+Compressing objects:  11% (9/78)
+Compressing objects:  12% (10/78)
+Compressing objects:  14% (11/78)
+Compressing objects:  15% (12/78)
+Compressing objects:  16% (13/78)
+Compressing objects:  17% (14/78)
+Compressing objects:  19% (15/78)
+Compressing objects:  20% (16/78)
+Compressing objects:  21% (17/78)
+Compressing objects:  23% (18/78)
+Compressing objects:  24% (19/78)
+Compressing objects:  25% (20/78)
+Compressing objects:  26% (21/78)
+Compressing objects:  28% (22/78)
+Compressing objects:  29% (23/78)
+Compressing objects:  30% (24/78)
+Compressing objects:  32% (25/78)
+Compressing objects:  33% (26/78)
+Compressing objects:  34% (27/78)
+Compressing objects:  35% (28/78)
+Compressing objects:  37% (29/78)
+Compressing objects:  38% (30/78)
+Compressing objects:  39% (31/78)
+Compressing objects:  41% (32/78)
+Compressing objects:  42% (33/78)
+Compressing objects:  43% (34/78)
+Compressing objects:  44% (35/78)
+Compressing objects:  46% (36/78)
+Compressing objects:  47% (37/78)
+Compressing objects:  48% (38/78)
+Compressing objects:  50% (39/78)
+Compressing objects:  51% (40/78)
+Compressing objects:  52% (41/78)
+Compressing objects:  53% (42/78)
+Compressing objects:  55% (43/78)
+Compressing objects:  56% (44/78)
+Compressing objects:  57% (45/78)
+Compressing objects:  58% (46/78)
+Compressing objects:  60% (47/78)
+Compressing objects:  61% (48/78)
+Compressing objects:  62% (49/78)
+Compressing objects:  64% (50/78)
+Compressing objects:  65% (51/78)
+Compressing objects:  66% (52/78)
+Compressing objects:  67% (53/78)
+Compressing objects:  69% (54/78)
+Compressing objects:  70% (55/78)
+Compressing objects:  71% (56/78)
+Compressing objects:  73% (57/78)
+Compressing objects:  74% (58/78)
+Compressing objects:  75% (59/78)
+Compressing objects:  76% (60/78)
+Compressing objects:  78% (61/78)
+Compressing objects:  79% (62/78)
+Compressing objects:  80% (63/78)
+Compressing objects:  82% (64/78)
+Compressing objects:  83% (65/78)
+Compressing objects:  84% (66/78)
+Compressing objects:  85% (67/78)
+Compressing objects:  87% (68/78)
+Compressing objects:  88% (69/78)
+Compressing objects:  89% (70/78)
+Compressing objects:  91% (71/78)
+Compressing objects:  92% (72/78)
+Compressing objects:  93% (73/78)
+Compressing objects:  94% (74/78)
+Compressing objects:  96% (75/78)
+Compressing objects:  97% (76/78)
+Compressing objects:  98% (77/78)
+Compressing objects: 100% (78/78)
+Compressing objects: 100% (78/78), done.
+Writing objects:   1% (1/79)
+Writing objects:   2% (2/79)
+Writing objects:   3% (3/79)
+Writing objects:   5% (4/79)
+Writing objects:   6% (5/79)
+Writing objects:   7% (6/79)
+Writing objects:   8% (7/79)
+Writing objects:  10% (8/79)
+Writing objects:  11% (9/79)
+Writing objects:  12% (10/79)
+Writing objects:  13% (11/79)
+Writing objects:  15% (12/79)
+Writing objects:  16% (13/79)
+Writing objects:  17% (14/79)
+Writing objects:  18% (15/79)
+Writing objects:  20% (16/79)
+Writing objects:  21% (17/79)
+Writing objects:  22% (18/79)
+Writing objects:  24% (19/79)
+Writing objects:  25% (20/79)
+Writing objects:  26% (21/79)
+Writing objects:  27% (22/79)
+Writing objects:  29% (23/79)
+Writing objects:  30% (24/79)
+Writing objects:  31% (25/79)
+Writing objects:  32% (26/79)
+Writing objects:  34% (27/79)
+Writing objects:  35% (28/79)
+Writing objects:  35% (28/79), 984.00 KiB | 384.00 KiB/s
+Writing objects:  35% (28/79), 1.21 MiB | 398.00 KiB/s  
+Writing objects:  35% (28/79), 1.85 MiB | 456.00 KiB/s
+Writing objects:  35% (28/79), 2.47 MiB | 483.00 KiB/s
+Writing objects:  35% (28/79), 3.08 MiB | 501.00 KiB/s
+Writing objects:  35% (28/79), 3.74 MiB | 588.00 KiB/s
+Writing objects:  35% (28/79), 4.38 MiB | 595.00 KiB/s
+Writing objects:  35% (28/79), 5.05 MiB | 606.00 KiB/s
+Writing objects:  35% (28/79), 5.63 MiB | 607.00 KiB/s
+Writing objects:  35% (28/79), 5.98 MiB | 605.00 KiB/s
+Writing objects:  35% (28/79), 6.65 MiB | 609.00 KiB/s
+Writing objects:  35% (28/79), 7.32 MiB | 620.00 KiB/s
+Writing objects:  35% (28/79), 7.94 MiB | 616.00 KiB/s
+Writing objects:  35% (28/79), 8.55 MiB | 615.00 KiB/s
+Writing objects:  35% (28/79), 9.20 MiB | 605.00 KiB/s
+Writing objects:  35% (28/79), 9.84 MiB | 597.00 KiB/s
+Writing objects:  35% (28/79), 10.18 MiB | 595.00 KiB/s
+Writing objects:  35% (28/79), 10.82 MiB | 600.00 KiB/s
+Writing objects:  35% (28/79), 11.38 MiB | 592.00 KiB/s
+Writing objects:  35% (28/79), 12.03 MiB | 597.00 KiB/s
+Writing objects:  35% (28/79), 12.70 MiB | 596.00 KiB/s
+Writing objects:  35% (28/79), 13.31 MiB | 594.00 KiB/s
+Writing objects:  35% (28/79), 13.93 MiB | 600.00 KiB/s
+Writing objects:  35% (28/79), 14.52 MiB | 599.00 KiB/s
+Writing objects:  35% (28/79), 15.16 MiB | 600.00 KiB/s
+Writing objects:  35% (28/79), 15.50 MiB | 605.00 KiB/s
+Writing objects:  35% (28/79), 16.11 MiB | 598.00 KiB/s
+Writing objects:  35% (28/79), 16.74 MiB | 603.00 KiB/s
+Writing objects:  35% (28/79), 17.33 MiB | 591.00 KiB/s
+Writing objects:  36% (29/79), 17.33 MiB | 591.00 KiB/s
+Writing objects:  37% (30/79), 17.33 MiB | 591.00 KiB/s
+Writing objects:  39% (31/79), 17.66 MiB | 602.00 KiB/s
+Writing objects:  40% (32/79), 17.66 MiB | 602.00 KiB/s
+Writing objects:  40% (32/79), 18.63 MiB | 579.00 KiB/s
+Writing objects:  40% (32/79), 18.94 MiB | 580.00 KiB/s
+Writing objects:  40% (32/79), 19.53 MiB | 571.00 KiB/s
+Writing objects:  40% (32/79), 20.17 MiB | 579.00 KiB/s
+Writing objects:  40% (32/79), 20.84 MiB | 601.00 KiB/s
+Writing objects:  40% (32/79), 21.48 MiB | 589.00 KiB/s
+Writing objects:  40% (32/79), 22.07 MiB | 588.00 KiB/s
+Writing objects:  40% (32/79), 22.70 MiB | 593.00 KiB/s
+Writing objects:  40% (32/79), 23.02 MiB | 596.00 KiB/s
+Writing objects:  41% (33/79), 23.28 MiB | 589.00 KiB/s
+Writing objects:  43% (34/79), 23.28 MiB | 589.00 KiB/s
+Writing objects:  44% (35/79), 23.28 MiB | 589.00 KiB/s
+Writing objects:  44% (35/79), 23.52 MiB | 575.00 KiB/s
+Writing objects:  44% (35/79), 24.18 MiB | 577.00 KiB/s
+Writing objects:  44% (35/79), 24.80 MiB | 577.00 KiB/s
+Writing objects:  44% (35/79), 25.45 MiB | 577.00 KiB/s
+Writing objects:  44% (35/79), 26.02 MiB | 580.00 KiB/s
+Writing objects:  44% (35/79), 26.57 MiB | 579.00 KiB/s
+Writing objects:  44% (35/79), 27.22 MiB | 581.00 KiB/s
+Writing objects:  44% (35/79), 27.87 MiB | 581.00 KiB/s
+Writing objects:  45% (36/79), 27.87 MiB | 581.00 KiB/s
+Writing objects:  46% (37/79), 27.87 MiB | 581.00 KiB/s
+Writing objects:  48% (38/79), 27.87 MiB | 581.00 KiB/s
+Writing objects:  48% (38/79), 28.06 MiB | 484.00 KiB/s
+Writing objects:  48% (38/79), 28.42 MiB | 500.00 KiB/s
+Writing objects:  48% (38/79), 29.08 MiB | 510.00 KiB/s
+Writing objects:  48% (38/79), 29.73 MiB | 516.00 KiB/s
+Writing objects:  48% (38/79), 30.41 MiB | 521.00 KiB/s
+Writing objects:  48% (38/79), 30.73 MiB | 524.00 KiB/s
+Writing objects:  48% (38/79), 31.39 MiB | 605.00 KiB/s
+Writing objects:  48% (38/79), 32.03 MiB | 612.00 KiB/s
+Writing objects:  48% (38/79), 32.77 MiB | 626.00 KiB/s
+Writing objects:  48% (38/79), 36.04 MiB | 1.15 MiB/s  
+Writing objects:  48% (38/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  49% (39/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  50% (40/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  51% (41/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  53% (42/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  54% (43/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  55% (44/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  56% (45/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  58% (46/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  59% (47/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  60% (48/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  62% (49/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  63% (50/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  64% (51/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  65% (52/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  67% (53/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  68% (54/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  69% (55/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  70% (56/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  72% (57/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  73% (58/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  74% (59/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  75% (60/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  77% (61/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  78% (62/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  79% (63/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  81% (64/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  82% (65/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  83% (66/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  84% (67/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  86% (68/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  87% (69/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  88% (70/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  89% (71/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  91% (72/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  92% (73/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  93% (74/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  94% (75/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  96% (76/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  97% (77/79), 46.11 MiB | 3.10 MiB/s
+Writing objects:  98% (78/79), 46.11 MiB | 3.10 MiB/s
+Writing objects: 100% (79/79), 51.32 MiB | 4.18 MiB/s
+Writing objects: 100% (79/79), 54.99 MiB | 924.00 KiB/s, done.
+Total 79 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas:   0% (0/1)        
+remote: Resolving deltas: 100% (1/1)        
+remote: Resolving deltas: 100% (1/1), done.        
+To https://github.com/Yords-Williams/practicas.git
+ + 3111cb3...bbd4111 main -> main (forced update)

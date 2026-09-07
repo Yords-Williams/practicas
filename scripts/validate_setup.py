@@ -21,7 +21,7 @@ def validate_all():
     
     print("\n" + "╔" + "="*68 + "╗")
     print("║" + "Alertas Tempranas - VALIDATION REPORT".center(68) + "║")
-    print("║" + "Quadro P1000 + i7-10700".center(68) + "║")
+    print("║" + "Quadro P1000 4 GB + i7-10700 (hasta 16 cámaras)".center(68) + "║")
     print("╚" + "="*68 + "╝")
     
     all_ok = True
@@ -39,8 +39,8 @@ def validate_all():
         
         # Memory
         total_mem = torch.cuda.get_device_properties(0).total_memory / 1e9
-        has_enough_mem = total_mem >= 1.5  # At least 1.5GB VRAM
-        print(f"{check_mark(has_enough_mem)} GPU Memory: {total_mem:.2f}GB (need ≥1.5GB)")
+        has_enough_mem = total_mem >= 3.5
+        print(f"{check_mark(has_enough_mem)} GPU Memory: {total_mem:.2f}GB (need ≥3.5GB for 16 cameras)")
         
         all_ok = all_ok and cuda_available and is_quadro and has_enough_mem
     else:

@@ -10,7 +10,7 @@ def parse_args():
     parser.add_argument('--dropout_rate', type=float, default=0.4, help='dropout rate')
     parser.add_argument('--attn_dropout_rate', type=float, default=0.1, help='attention dropout rate')
     parser.add_argument('--lr', type=str, default=2e-4, help='learning rates for steps default:2e-4')
-    parser.add_argument('--batch_size', type=int, default=16, help='number of instances in a batch of data (default: 16)')
+    parser.add_argument('--batch_size', type=int, default=4, help='number of instances in a batch of data (default: 4 for 4 GB VRAM)')
 
 
     parser.add_argument('--model_name', default='model', help='name to save model')

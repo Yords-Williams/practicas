@@ -1,7 +1,7 @@
 import sys
 import os
 import cv2
-from config import CPU_OPTIMIZATION, DETECTION_CONFIG
+from config import CPU_OPTIMIZATION, DETECTION_CONFIG, THREADING_CONFIG
 from PySide6.QtGui import QIcon
 
 # Aplicar optimizaciones de CPU antes de importar librerías pesadas
@@ -10,8 +10,8 @@ for var, value in CPU_OPTIMIZATION.items():
 
 # Limitar threads de OpenBLAS/PyTorch
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['OMP_NUM_THREADS'] = '2'
-os.environ['MKL_NUM_THREADS'] = '2'
+os.environ['OMP_NUM_THREADS'] = CPU_OPTIMIZATION['OMP_NUM_THREADS']
+os.environ['MKL_NUM_THREADS'] = CPU_OPTIMIZATION['MKL_NUM_THREADS']
 
 print("[BOOT] Optimizaciones de CPU aplicadas")
 print(f"[BOOT] Threads OMP: {os.environ.get('OMP_NUM_THREADS', '?')}")
@@ -50,7 +50,11 @@ def main():
     
     # Crear instancias de cámaras
     CAMERAS = []
-    for cam_config in cameras_config:
+    max_cameras = THREADING_CONFIG['max_cameras']
+    if len(cameras_config) > max_cameras:
+        print(f"[MAIN] Se usarán las primeras {max_cameras} de {len(cameras_config)} cámaras configuradas")
+
+    for cam_config in cameras_config[:max_cameras]:
         try:
             cam = CamaraRTSP(cam_config["url"], cam_config["name"])
             # Attach camera-specific detection settings (with sensible defaults)

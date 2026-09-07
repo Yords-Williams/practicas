@@ -5,7 +5,7 @@ import os
 from config import DETECTION_CONFIG
 
 class DetectorIA:
-    """Detector YOLO optimizado para NVIDIA Quadro P1000"""
+    """Detector YOLO optimizado para NVIDIA Quadro P1000 de 4 GB."""
 
     def __init__(self):
         print("[IA] Inicializando detector YOLO optimizado...")
@@ -23,8 +23,9 @@ class DetectorIA:
             print(f"[IA] ✓ GPU: {gpu_name}")
             print(f"[IA] ✓ VRAM: {gpu_memory:.1f}GB")
             
-            # Optimizaciones CUDA para Quadro P1000
-            torch.cuda.set_per_process_memory_fraction(0.8)  # Usar 80% VRAM
+            # Reservar margen para CUDA/OpenCV y los detectores especializados.
+            # Evita errores OOM cuando el sistema atiende 16 cámaras.
+            torch.cuda.set_per_process_memory_fraction(0.75)
             torch.cuda.empty_cache()
         else:
             self.device = "cpu"

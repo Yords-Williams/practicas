@@ -951,10 +951,166 @@ add_code(doc,
 '            with open(frame_path, "rb") as f:\n'
 '                requests.post(url2, data={"chat_id": chat_id},\n'
 '                              files={"photo": f})')
-add_para(doc, 'Foto del sistema CCTV AI PRO en ejecución en el Serenazgo Municipal:')
+add_para(doc, 'Foto del sistema en ejecución en el Serenazgo Municipal:')
 add_img_file(doc,
     os.path.join(ROOT,'assets','WhatsApp Image 2026-07-08 at 06.23.30.jpeg'), 12,
-    'Figura 6. Sistema CCTV AI PRO corriendo en producción — Vista de cámaras con estadísticas')
+    'Figura 6. Sistema Alertas Tempranas corriendo en producción — Vista de cámaras con estadísticas')
+doc.add_paragraph()
+
+# ─ S7 Notificaciones ──────────────────────────────────────────────────────────
+add_heading(doc,'Semana 7 (28 de abril - 2 de mayo) — Módulo de Notificaciones (Telegram y Gmail)',level=2,color=AZUL2)
+add_para(doc,
+    'Se implementó el sistema de notificaciones en tiempo real del Serenazgo Municipal. '
+    'Ante la detección de cualquier incidente (incendio, accidente o robo), el sistema '
+    'envía alertas automáticas a través de dos canales: Telegram Bot y correo Gmail. '
+    'Ambos módulos comparten una interfaz uniforme (método send_alert) y leen sus '
+    'credenciales desde un único archivo notifications_config.json:')
+add_code(doc,
+'# notifications_config.json — configuración de ambos canales\n'
+'{\n'
+'  "telegram": {\n'
+'    "enabled": true,\n'
+'    "token": "7842...:AAHxxxxxxxxxxxxxx",   // Token del BotFather\n'
+'    "chat_ids": ["-1001234567890"]          // ID del grupo del Serenazgo\n'
+'  },\n'
+'  "gmail": {\n'
+'    "enabled": true,\n'
+'    "sender": "alertas.caracoto@gmail.com",\n'
+'    "app_password": "xxxx xxxx xxxx xxxx",  // Contraseña de aplicación\n'
+'    "to_emails": ["jefe.serenazgo@caracoto.gob.pe"],\n'
+'    "include_frame": true\n'
+'  }\n'
+'}')
+
+add_heading(doc,'Módulo Telegram (modulos/alarma/telegram_notifier.py)',level=3,color=AZUL2)
+add_para(doc,
+    'La API Bot de Telegram permite enviar mensajes formateados en HTML a múltiples '
+    'chats simultáneamente. Se usó la API sendMessage (texto) y sendPhoto (captura '
+    'del frame en el momento del incidente). El token se obtiene una vez mediante '
+    '@BotFather; el chat_id se obtiene visitando la URL de getUpdates:')
+add_code(doc,
+'class TelegramNotifier:\n'
+'    def send_alert(self, camera, alert_type, severity="NORMAL",\n'
+'                   details="", frame_path=None) -> bool:\n'
+'        if not self.token or not self.chat_ids:\n'
+'            return False\n'
+'\n'
+'        message = self._build_message(camera, alert_type, severity, details)\n'
+'        url_msg   = f"https://api.telegram.org/bot{self.token}/sendMessage"\n'
+'        url_photo = f"https://api.telegram.org/bot{self.token}/sendPhoto"\n'
+'\n'
+'        success = 0\n'
+'        for chat_id in self.chat_ids:\n'
+'            # 1. Enviar texto formateado en HTML\n'
+'            r = requests.post(url_msg, json={\n'
+'                "chat_id": chat_id,\n'
+'                "text": message,\n'
+'                "parse_mode": "HTML"\n'
+'            }, timeout=10)\n'
+'            if r.status_code == 200:\n'
+'                # 2. Adjuntar foto del incidente si está disponible\n'
+'                if frame_path and os.path.exists(frame_path):\n'
+'                    with open(frame_path, "rb") as f:\n'
+'                        requests.post(url_photo,\n'
+'                            data={"chat_id": chat_id},\n'
+'                            files={"photo": f}, timeout=10)\n'
+'                success += 1\n'
+'        return success > 0\n'
+'\n'
+'    def _build_message(self, camera, alert_type, severity, details) -> str:\n'
+'        icons = {"accident":"🚗💥","theft":"🚨","fire":"🔥"}\n'
+'        return (\n'
+'            f"{icons.get(alert_type,\'⚠\')} <b>ALERTA {alert_type.upper()}</b>\\n"\n'
+'            f"📷 Cámara: <b>{camera}</b>\\n"\n'
+'            f"⚡ Severidad: {severity}\\n"\n'
+'            f"🕐 Hora: {datetime.now().strftime(\'%H:%M:%S\')}\\n"\n'
+'            f"📝 {details}\\n"\n'
+'            f"<i>🤖 Sistema Alertas Tempranas</i>"\n'
+'        )')
+
+add_heading(doc,'Módulo Gmail (modulos/alarma/gmail_notifier.py)',level=3,color=AZUL2)
+add_para(doc,
+    'Se usó smtplib con STARTTLS (puerto 587) para autenticación segura. '
+    'El cuerpo del correo es HTML responsivo que incluye tipo de alerta, cámara, '
+    'severidad, hora y detalles. Si el parámetro frame_path está presente, '
+    'se adjunta la captura JPEG del momento de la detección como archivo adjunto '
+    'mediante MIME multipart. La autenticación usa Contraseña de Aplicación de '
+    'Google (no la contraseña normal), generada desde myaccount.google.com/apppasswords:')
+add_code(doc,
+'class GmailNotifier:\n'
+'    def send_alert(self, camera, alert_type, severity="NORMAL",\n'
+'                   details="", frame_path=None) -> bool:\n'
+'        if not self.sender or not self.to_emails:\n'
+'            return False\n'
+'\n'
+'        msg = MIMEMultipart("alternative")\n'
+'        msg["Subject"] = f"🚨 ALERTA CCTV - {alert_type.upper()}"\n'
+'        msg["From"]    = self.sender\n'
+'        msg["To"]      = self.to_emails[0]\n'
+'        msg["Bcc"]     = ", ".join(self.to_emails[1:])\n'
+'\n'
+'        html = f"""\n'
+'        <div style="font-family:Arial; max-width:600px; margin:auto;">\n'
+'          <h2 style="color:#e74c3c;">🚨 ALERTA CCTV</h2>\n'
+'          <p><b>Tipo:</b> {alert_type.upper()}</p>\n'
+'          <p><b>Cámara:</b> {camera}</p>\n'
+'          <p><b>Severidad:</b> {severity}</p>\n'
+'          <p><b>Hora:</b> {datetime.now().strftime("%H:%M:%S")}</p>\n'
+'          <p><b>Detalles:</b> {details}</p>\n'
+'          <hr><em>Sistema de Vigilancia Alertas Tempranas</em>\n'
+'        </div>"""\n'
+'        msg.attach(MIMEText(html, "html"))\n'
+'\n'
+'        # Adjuntar imagen del incidente\n'
+'        if frame_path and os.path.exists(frame_path):\n'
+'            with open(frame_path, "rb") as f:\n'
+'                part = MIMEImage(f.read())\n'
+'                part.add_header("Content-Disposition",\n'
+'                    "attachment", filename="deteccion.jpg")\n'
+'                msg.attach(part)\n'
+'\n'
+'        server = smtplib.SMTP("smtp.gmail.com", 587)\n'
+'        server.starttls()\n'
+'        server.login(self.sender, self.password)\n'
+'        server.send_message(msg)\n'
+'        server.quit()\n'
+'        return True')
+
+add_heading(doc,'Integración con los detectores',level=3,color=AZUL2)
+add_para(doc,
+    'Ambos notificadores son instanciados en notifications.py y exponen '
+    'una función notify_incident() centralizada que es llamada desde cada '
+    'módulo detector cuando supera el umbral de confianza. La llamada es '
+    'no bloqueante (hilo daemon) para no interrumpir el bucle de captura:')
+add_code(doc,
+'# notifications.py — función centralizada\n'
+'def notify_incident(camera: str, alert_type: str, severity: str,\n'
+'                    details: str, frame_path: str = None):\n'
+'    """Enviar notificación por todos los canales habilitados (no bloqueante)."""\n'
+'    def _send():\n'
+'        if telegram.is_enabled():\n'
+'            telegram.send_alert(camera, alert_type, severity,\n'
+'                                details, frame_path)\n'
+'        if gmail.is_enabled():\n'
+'            gmail.send_alert(camera, alert_type, severity,\n'
+'                             details, frame_path)\n'
+'    threading.Thread(target=_send, daemon=True).start()\n'
+'\n'
+'# Uso desde el detector de incendios:\n'
+'if fire_detected and confidence > 0.70:\n'
+'    notify_incident(\n'
+'        camera = cam.name,\n'
+'        alert_type = "fire",\n'
+'        severity   = "CRÍTICO",\n'
+'        details    = f"Confianza: {confidence:.0%} — {location}",\n'
+'        frame_path = save_frame(frame)\n'
+'    )')
+
+add_table(doc,
+    ['Canal','Protocolo','Autenticación','Adjunta foto','Latencia típica'],
+    [('Telegram Bot','HTTPS REST API','Token BotFather','✓ sendPhoto','< 2 s'),
+     ('Gmail (SMTP)','SMTP + STARTTLS','App Password Google','✓ MIME attachment','< 5 s')],
+    [3,3.5,4,3,3])
 doc.add_paragraph()
 
 # ─ S10-S12 pruebas ────────────────────────────────────────────────────────────
@@ -981,7 +1137,43 @@ add_para(doc,
     'Correcciones aplicadas durante esta fase: (1) ventana redimensionable '
     '(setMinimumSize 960×600 en lugar de 1400×850), (2) estadísticas solo en vista '
     'Cámaras, (3) nueva vista Notificaciones funcional, (4) nueva vista Ajustes con '
-    'módulos por cámara, (5) reorganización de módulos en subcarpetas.')
+    'módulos por cámara y monitoreo de hardware, (5) reorganización de archivos en '
+    'subcarpetas tests/ y scripts/, (6) barra lateral QPushButton sin scroll, '
+    '(7) recarga de cámaras en caliente sin reiniciar la app, '
+    '(8) timeout RTSP reducido de 30 s a 6 s mediante hilo daemon, '
+    '(9) soporte de tres tipos de fuente de video (RTSP, cámara local, archivo).')
+add_code(doc,
+'# ui.py — save_settings() actualizado (Ajustes: módulos + FPS + aplica en caliente)\n'
+'def save_settings(self):\n'
+'    cameras_config = CameraDialog.get_cameras()\n'
+'    for idx, chk_fire, chk_theft, chk_acc in self.cam_module_checks:\n'
+'        if idx < len(cameras_config):\n'
+'            cameras_config[idx]["detect_fire"]     = chk_fire.isChecked()\n'
+'            cameras_config[idx]["detect_theft"]    = chk_theft.isChecked()\n'
+'            cameras_config[idx]["detect_accident"] = chk_acc.isChecked()\n'
+'\n'
+'    with open("cameras_config.json", "w", encoding="utf-8") as f:\n'
+'        json.dump(cameras_config, f, indent=2, ensure_ascii=False)\n'
+'\n'
+'    # Aplicar FPS en tiempo real sin reiniciar\n'
+'    new_fps = self.fps_spin.value()\n'
+'    self.target_fps = new_fps\n'
+'    self.timer.setInterval(max(1, 1000 // new_fps))\n'
+'\n'
+'    # Propagar settings a cada objeto CamaraRTSP activo\n'
+'    for cam in self.cams:\n'
+'        if hasattr(cam, "settings") and cam.name:\n'
+'            for cfg in cameras_config:\n'
+'                if cfg.get("name") == cam.name:\n'
+'                    cam.settings = {\n'
+'                        "detect_fire":     cfg.get("detect_fire",     True),\n'
+'                        "detect_theft":    cfg.get("detect_theft",    True),\n'
+'                        "detect_accident": cfg.get("detect_accident", True),\n'
+'                    }\n'
+'                    break\n'
+'\n'
+'    QMessageBox.information(self, "Guardado",\n'
+'        "Ajustes guardados. Los cambios se aplican inmediatamente.")')
 doc.add_paragraph()
 
 # ─ S13 ────────────────────────────────────────────────────────────────────────
@@ -1109,14 +1301,133 @@ doc.add_paragraph()
 # ─ S15 ────────────────────────────────────────────────────────────────────────
 add_heading(doc,'Semana 15 (22 de junio - 26 de junio) — Documentación',level=2,color=AZUL2)
 add_para(doc,
-    'Se generó la documentación completa del proyecto mediante scripts Python que '
-    'producen documentos Word con python-docx:')
+    'Se dedicó la penúltima semana a producir la documentación completa del proyecto. '
+    'Se desarrollaron tres scripts Python (scripts/generar_informe_v4.py, '
+    'scripts/generar_manual_v2.py y scripts/generar_reporte_tests.py) que generan '
+    'automáticamente documentos Word con python-docx, incorporando código real del '
+    'proyecto, tablas, gráficas matplotlib y mockups de interfaz. '
+    'Adicionalmente se publicó el repositorio en GitHub con README completo.')
+
+add_heading(doc,'Documentos generados',level=3,color=AZUL2)
 add_table(doc,
-    ['Documento','Contenido','Páginas aprox.'],
-    [('MANUAL_USUARIO_v2.docx','13 secciones, 6 mockups de UI, tablas de pasos, FAQ','~35 páginas'),
-     ('REPORTE_TESTS.docx','70 pruebas documentadas con resultado, límite y descripción','~15 páginas'),
-     ('INFORME_FINAL_PRACTICAS_v4.docx','16 semanas, gráficas matplotlib, código real del proyecto','~45 páginas')],
-    [5,8,3])
+    ['Documento','Script generador','Contenido','Páginas'],
+    [('MANUAL_USUARIO_v2.docx','generar_manual_v2.py',
+      '13 secciones, 6 mockups de UI, tablas de pasos, FAQ (7 preguntas), tarjeta de referencia rápida','~35'),
+     ('REPORTE_TESTS.docx','generar_reporte_tests.py',
+      '70 pruebas documentadas con resultado, límite y descripción; gráfica de resultados','~15'),
+     ('INFORME_FINAL_PRACTICAS_v4f.docx','generar_informe_v4.py',
+      '16 semanas, 8 figuras matplotlib, código real, tablas de métricas, análisis FODA','~55')],
+    [5,5,7,1.5])
+
+add_heading(doc,'Arquitectura de los scripts de documentación',level=3,color=AZUL2)
+add_para(doc,
+    'Cada script sigue el mismo patrón: abre el documento v3 como base '
+    '(que ya contiene la portada, datos del practicante y estructura institucional), '
+    'localiza el párrafo de corte, elimina el contenido antiguo y lo reemplaza con '
+    'contenido generado programáticamente. Las figuras se crean con matplotlib '
+    'en memoria (io.BytesIO) y se insertan como imágenes PNG:')
+add_code(doc,
+'# Patrón base de los scripts de documentación\n'
+'from docx import Document\n'
+'from docx.shared import Pt, Cm, RGBColor\n'
+'import matplotlib.pyplot as plt\n'
+'import io\n'
+'\n'
+'# 1. Abrir el documento v3 como plantilla institucional\n'
+'doc = Document("INFORME_FINAL_PRACTICAS_v3.docx")\n'
+'\n'
+'# 2. Localizar punto de corte ("Semana 3") y eliminar todo lo que sigue\n'
+'cut = next(i for i, p in enumerate(doc.paragraphs)\n'
+'           if "Semana 3" in p.text)\n'
+'for p in doc.paragraphs[cut:]:\n'
+'    p._element.getparent().remove(p._element)\n'
+'\n'
+'# 3. Insertar contenido nuevo con helpers\n'
+'def add_code(doc_obj, code_text):\n'
+'    p = doc_obj.add_paragraph()\n'
+'    run = p.add_run(code_text)\n'
+'    run.font.name = "Courier New"\n'
+'    run.font.size = Pt(8.5)\n'
+'    # Fondo gris para bloques de código\n'
+'    shd = OxmlElement("w:shd")\n'
+'    shd.set(qn("w:fill"), "F0F0F0")\n'
+'    p._p.get_or_add_pPr().append(shd)\n'
+'\n'
+'# 4. Insertar gráfica matplotlib como imagen incrustada\n'
+'def add_img_from_fig(doc_obj, fig, width_cm=14, caption=None):\n'
+'    buf = io.BytesIO()\n'
+'    fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)\n'
+'    buf.seek(0)\n'
+'    doc_obj.add_picture(buf, width=Cm(width_cm))\n'
+'    plt.close(fig)\n'
+'    if caption:\n'
+'        p = doc_obj.add_paragraph(caption)\n'
+'        p.alignment = WD_ALIGN_PARAGRAPH.CENTER\n'
+'\n'
+'# 5. Guardar con versión incremental (evitar PermissionError si está abierto)\n'
+'doc.save("INFORME_FINAL_PRACTICAS_v4f.docx")')
+
+add_heading(doc,'Publicación en GitHub',level=3,color=AZUL2)
+add_para(doc,
+    'Se organizó el repositorio en una estructura estándar y se publicó en '
+    'https://github.com/Yords-Williams/practicas. El .gitignore excluye el '
+    'entorno virtual, credenciales (cameras_config.json, notifications_config.json) '
+    'y los documentos Word del informe; solo se incluye el manual de usuario '
+    'en docs/. Los archivos de prueba se movieron a tests/ con un conftest.py '
+    'que agrega el directorio raíz al sys.path:')
+add_code(doc,
+'# Estructura del repositorio publicado\n'
+'practicas/\n'
+'├── README.md                  # Guía de instalación y uso\n'
+'├── main.py  camera.py  ui.py  config.py  detector.py\n'
+'├── alertas_tempranas.spec     # PyInstaller spec\n'
+'├── build_exe.ps1              # Script de compilación\n'
+'├── requirements.txt\n'
+'├── modulos/\n'
+'│   ├── incendio/  choques/  robo/  alarma/\n'
+'│   └── person_identifier.py\n'
+'├── tests/\n'
+'│   ├── conftest.py            # sys.path para importar desde raíz\n'
+'│   └── test_cameras.py  test_fire_detector.py  test_gpu.py\n'
+'│       test_integration.py  test_telegram_notifier.py\n'
+'├── scripts/\n'
+'│   ├── generar_informe_v4.py  generar_manual_v2.py\n'
+'│   ├── generar_reporte_tests.py  benchmark.py  validate_setup.py\n'
+'│   └── convert_icon.py  prepare_assets.py\n'
+'├── docs/\n'
+'│   └── MANUAL_USUARIO_v2.docx\n'
+'└── assets/\n'
+'    └── app.ico  app.png\n'
+'\n'
+'# tests/conftest.py — permite importar módulos del proyecto desde tests/\n'
+'import sys, os\n'
+'sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))')
+
+add_heading(doc,'README.md — Guía de instalación',level=3,color=AZUL2)
+add_para(doc,
+    'El archivo README.md describe en detalle los requisitos de hardware y software, '
+    'los pasos de instalación desde cero, la configuración de cámaras y notificaciones, '
+    'el proceso de generación del ejecutable y la ejecución de las pruebas '
+    'automatizadas. Incluye insignias de versión (Python 3.11, PyTorch 2.11, '
+    'YOLOv8, PySide6, CUDA 12.8) y una tabla de tipos de fuente de video:')
+add_code(doc,
+'# Instalación rápida (README.md)\n'
+'git clone https://github.com/Yords-Williams/practicas.git\n'
+'cd practicas\n'
+'python -m venv venv\n'.replace('\n','\\n') +
+'.\\venv\\Scripts\\Activate.ps1\n'
+'pip install -r requirements.txt\n'
+'\n'
+'# Configurar cámaras\n'
+'Copy-Item cameras_config.json.example cameras_config.json\n'
+'# Editar cameras_config.json con IPs y credenciales\n'
+'\n'
+'# Ejecutar\n'
+'python main.py\n'
+'\n'
+'# Generar ejecutable distribuible\n'
+'Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned\n'
+'.\\build_exe.ps1   # resultado en dist\\AlertasTempranas\\ (~3-4 GB)')
 doc.add_paragraph()
 
 # ─ S16 ────────────────────────────────────────────────────────────────────────
@@ -1235,6 +1546,6 @@ for txt in ['_________________________________','Yords Williams Ccalla Mamani',
     if txt=='Yords Williams Ccalla Mamani': r.bold=True
 
 # ─ Guardar ────────────────────────────────────────────────────────────────────
-out = os.path.join(ROOT, 'INFORME_FINAL_PRACTICAS_v4d.docx')
+out = os.path.join(ROOT, 'INFORME_FINAL_PRACTICAS_v4g.docx')
 doc.save(out)
 print(f'Guardado: {out}')

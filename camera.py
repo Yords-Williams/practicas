@@ -2,7 +2,7 @@ import cv2
 import os
 import threading
 import time
-from config import CAPTURE_CONFIG
+from config import CAPTURE_CONFIG, DETECTION_CONFIG
 
 # Reducir timeout de FFMPEG a 5 s via variable de entorno
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "stimeout;5000000")
@@ -86,7 +86,7 @@ class CamaraRTSP:
         self.cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)  # DSHOW más rápido en Windows
         if self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, CAPTURE_CONFIG['buffer_size'])
-            self.cap.set(cv2.CAP_PROP_FPS, 25)
+            self.cap.set(cv2.CAP_PROP_FPS, DETECTION_CONFIG['fps_limit'])
 
     def _connect_file(self):
         """Archivo de video local con soporte de bucle."""
@@ -113,9 +113,9 @@ class CamaraRTSP:
 
         if self.cap and self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, CAPTURE_CONFIG['buffer_size'])
-            self.cap.set(cv2.CAP_PROP_FPS, 25)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 384)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 216)
+            self.cap.set(cv2.CAP_PROP_FPS, DETECTION_CONFIG['fps_limit'])
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, DETECTION_CONFIG['frame_resize'][0])
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, DETECTION_CONFIG['frame_resize'][1])
 
     # ── Loop de captura ───────────────────────────────────────────────────────
 
@@ -151,7 +151,7 @@ class CamaraRTSP:
                 self.fps = 1.0 / elapsed
             self.last_frame_time = current_time
 
-            time.sleep(0.04)   # ~25 FPS
+            time.sleep(1.0 / DETECTION_CONFIG['fps_limit'])
 
     # ── API pública ───────────────────────────────────────────────────────────
 
@@ -175,5 +175,4 @@ class CamaraRTSP:
         self.running = False
         if self.cap:
             self.cap.release()
-
 

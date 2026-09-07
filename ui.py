@@ -13,7 +13,7 @@ from PySide6.QtGui import QImage, QPixmap, QColor
 from PySide6.QtCore import QTimer, Qt
 from camera_dialog import CameraDialog
 from camera import CamaraRTSP
-from config import DETECTION_CONFIG
+from config import DETECTION_CONFIG, THREADING_CONFIG
 from modulos.incendio.detector import FireDetectionSystem
 
 class CCTVWindow(QWidget):
@@ -36,6 +36,10 @@ class CCTVWindow(QWidget):
         self.total_frames_processed = 0
         self.frame_times = []
         self.target_fps = DETECTION_CONFIG['fps_limit']
+        # La GPU analiza una única fuente en cada tick y avanza en ronda. El
+        # video de las 16 cámaras se sigue mostrando, pero no se solapan
+        # inferencias YOLO que causarían picos de VRAM.
+        self._analysis_camera_index = 0
 
         # Monitoreo de hardware (pynvml)
         self._nvml_handle = None
@@ -116,9 +120,9 @@ class CCTVWindow(QWidget):
         self.grid = QGridLayout()
         self.labels = []
 
-        # Mostrar hasta 6 cámaras (2x3 o 3x2)
-        max_cameras = 6
-        cols = 3
+        # Perfil P1000 4 GB: mosaico de hasta 16 cámaras (4 × 4).
+        max_cameras = THREADING_CONFIG['max_cameras']
+        cols = THREADING_CONFIG['grid_columns']
         for i in range(max_cameras):
             lbl = QLabel("SIN VIDEO")
             lbl.setMinimumSize(280, 160)
@@ -472,10 +476,10 @@ class CCTVWindow(QWidget):
             "QHeaderView::section{background:#1b1d1f; color:#e6eef6; padding:6px; border: none;}"
         )
 
-        # TIMER optimizado para 25 FPS
+        # El refresco ligero se mantiene independiente de la inferencia.
         self.timer = QTimer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(40)  # 40ms = 25 FPS
+        self.timer.start(max(1, 1000 // self.target_fps))
 
         # Cargar incidentes inicialmente
         self.refresh_incidents()
@@ -625,7 +629,7 @@ class CCTVWindow(QWidget):
 
         # Recargar desde cameras_config.json
         self.cams = []
-        for cam_cfg in CameraDialog.get_cameras():
+        for cam_cfg in CameraDialog.get_cameras()[:THREADING_CONFIG['max_cameras']]:
             try:
                 cam = CamaraRTSP(cam_cfg["url"], cam_cfg["name"])
                 cam.settings = {
@@ -664,6 +668,15 @@ class CCTVWindow(QWidget):
     def update(self):
         """Actualizar frames y aplicar detecciones"""
 
+        cameras_count = len(self.cams)
+        if cameras_count:
+            analysis_index = self._analysis_camera_index % cameras_count
+            self._analysis_camera_index = (
+                self._analysis_camera_index + THREADING_CONFIG['analysis_cameras_per_tick']
+            ) % cameras_count
+        else:
+            analysis_index = -1
+
         for i, cam in enumerate(self.cams):
             if i >= len(self.labels):
                 break
@@ -681,7 +694,9 @@ class CCTVWindow(QWidget):
             self.total_frames_processed += 1
 
             # Aplicar detecciones según modo
-            if i == 0:  # Solo en la primera cámara (optimización)
+            # Inferencia rotativa: una cámara por tick. Así las 16 reciben
+            # análisis sin ejecutar YOLO simultáneamente en la P1000.
+            if i == analysis_index:
                 if self.detection_mode == "general":
                     frame = self.detector.predict(frame)
                     
@@ -731,7 +746,8 @@ class CCTVWindow(QWidget):
                         except Exception as e:
                             print(f"[UI] Error en pipeline de detección de robos: {e}")
 
-            if self.fire_detector and getattr(cam, 'settings', {}).get('detect_fire', True):
+            if (i == analysis_index and self.fire_detector
+                    and getattr(cam, 'settings', {}).get('detect_fire', True)):
                 try:
                     incident = self.fire_detector.analyze_frame(frame, camera_name=cam.name if hasattr(cam, 'name') else f'Cámara {i+1}')
                     if incident:

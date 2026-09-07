@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import json
 import os
+from config import THREADING_CONFIG
 
 CAMERAS_FILE = "cameras_config.json"
 
@@ -174,6 +175,14 @@ class CameraDialog(QDialog):
             self.table.setCellWidget(row, 3, del_btn)
 
     def add_camera(self):
+        if len(self.cameras) >= THREADING_CONFIG['max_cameras']:
+            QMessageBox.warning(
+                self,
+                "Límite de cámaras",
+                f"El perfil Quadro P1000 admite hasta {THREADING_CONFIG['max_cameras']} cámaras.",
+            )
+            return
+
         name = self.name_input.text().strip()
         url  = self._get_url()
         tipo_idx = self.type_combo.currentIndex()
@@ -267,4 +276,3 @@ class CameraDialog(QDialog):
     def get_cameras():
         """Obtener lista de fuentes de video configuradas."""
         return CameraDialog.load_cameras()
-

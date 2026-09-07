@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='alertas',
+    name='Alertas tempranas',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

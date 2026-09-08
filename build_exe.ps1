@@ -6,6 +6,8 @@ Set-Location $PSScriptRoot
 
 $PYTHON = ".\practicas\Scripts\python.exe"
 $DIST   = "dist\AlertasTempranas"
+$SPEC   = "Alertas tempranas.spec"
+$OVMODEL = "yolov8n_openvino_model"
 
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "  BUILD — Alertas Tempranas"                            -ForegroundColor Cyan
@@ -22,18 +24,28 @@ Write-Host "`n[1/4] Limpiando builds anteriores..." -ForegroundColor Yellow
 if (Test-Path "dist\AlertasTempranas") { Remove-Item "dist\AlertasTempranas" -Recurse -Force }
 if (Test-Path "build\AlertasTempranas") { Remove-Item "build\AlertasTempranas" -Recurse -Force }
 
-# ── 2. Compilar con PyInstaller ───────────────────────────────────────────────
-Write-Host "`n[2/4] Compilando con PyInstaller (esto tarda 5-15 min)..." -ForegroundColor Yellow
+# ── 2. Exportar el modelo para la GPU Intel ──────────────────────────────────
+Write-Host "`n[2/5] Preparando modelo OpenVINO para Intel UHD..." -ForegroundColor Yellow
+if (!(Test-Path "$OVMODEL\yolov8n.xml")) {
+    & $PYTHON -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='openvino', imgsz=384)"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n[ERROR] No se pudo exportar el modelo OpenVINO." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# ── 3. Compilar con PyInstaller ───────────────────────────────────────────────
+Write-Host "`n[3/5] Compilando con PyInstaller (esto tarda 5-15 min)..." -ForegroundColor Yellow
 $env:PYTHONIOENCODING = 'utf-8'
-& $PYTHON -m PyInstaller alertas_tempranas.spec --noconfirm --clean
+& $PYTHON -m PyInstaller $SPEC --noconfirm --clean
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERROR] PyInstaller falló. Revisa los mensajes anteriores." -ForegroundColor Red
     exit 1
 }
 
-# ── 3. Copiar archivos de datos editables al destino ─────────────────────────
-Write-Host "`n[3/4] Copiando archivos de configuración..." -ForegroundColor Yellow
+# ── 4. Copiar archivos de datos editables al destino ─────────────────────────
+Write-Host "`n[4/5] Copiando archivos de configuración..." -ForegroundColor Yellow
 
 # cameras_config.json de ejemplo (vacío) — el usuario configura sus cámaras
 @"
@@ -48,22 +60,23 @@ foreach ($f in @("fire_config.json","notifications_config.json")) {
     }
 }
 
-# ── 4. Crear README de instalación ───────────────────────────────────────────
-Write-Host "`n[4/4] Creando README de instalación..." -ForegroundColor Yellow
+# ── 5. Crear README de instalación ───────────────────────────────────────────
+Write-Host "`n[5/5] Creando README de instalación..." -ForegroundColor Yellow
 @"
 ALERTAS TEMPRANAS — Instalación
 ================================
 
 REQUISITOS DE LA PC DE DESTINO:
   • Windows 10/11 (64 bits)
-  • Driver NVIDIA actualizado (para GPU Quadro P1000)
+  • Driver Intel UHD 630 actualizado (OpenVINO para la GPU integrada)
+  • Driver NVIDIA actualizado (respaldo CUDA para GPU Quadro P1000)
     Descargar en: https://www.nvidia.com/Download/index.aspx
   • Visual C++ Redistributable 2022 (si no está instalado)
     Descargar en: https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 INSTALACIÓN:
   1. Copia toda esta carpeta "AlertasTempranas" a la PC de destino.
-  2. Instala los drivers NVIDIA y el VC++ Redistributable si es necesario.
+  2. Instala los drivers Intel/NVIDIA y el VC++ Redistributable si es necesario.
   3. Ejecuta AlertasTempranas.exe
 
 CONFIGURACIÓN DE CÁMARAS:
@@ -72,6 +85,8 @@ CONFIGURACIÓN DE CÁMARAS:
   • La configuración se guarda en cameras_config.json (editable).
 
 PRIMER ARRANQUE:
+  • La app usa primero OpenVINO en la GPU Intel UHD; si no está disponible,
+    usa CUDA en la Quadro y finalmente CPU.
   • La primera vez puede tardar 30-60 s mientras carga los modelos de IA.
   • Si las cámaras no conectan, verifica que la PC esté en la red 192.168.18.x.
 

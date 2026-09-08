@@ -71,6 +71,16 @@ DETECTION_CONFIG = {
     "iou_threshold": 0.45,                  # IoU para NMS
 }
 
+# Motor de inferencia distribuible. OpenVINO usa la Intel UHD 630 mediante
+# `intel:gpu`; si en otra PC no hay driver Intel/OpenVINO, se usa CUDA y luego
+# CPU de manera automática. El modelo OpenVINO se incluye en el ejecutable.
+INFERENCE_CONFIG = {
+    "backend": "openvino_gpu",
+    "openvino_device": "intel:gpu",
+    "fallback_order": ("cuda", "cpu"),
+    "openvino_model_dir": "yolov8n_openvino_model",
+}
+
 # Parámetros de captura de video optimizados
 CAPTURE_CONFIG = {
     "buffer_size": 1,                       # Mínimo buffer (menos latencia)

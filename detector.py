@@ -2,22 +2,30 @@ from ultralytics import YOLO
 import torch
 import cv2
 import os
-from config import DETECTION_CONFIG
+import sys
+import numpy as np
+from config import DETECTION_CONFIG, INFERENCE_CONFIG, YOLO_GENERAL_MODEL
 
 class DetectorIA:
     """Detector YOLO optimizado para NVIDIA Quadro P1000 de 4 GB."""
 
     def __init__(self):
         print("[IA] Inicializando detector YOLO optimizado...")
-        print(f"[IA] GPU: {DETECTION_CONFIG['device_type'].upper()}")
-        
-        # Cargar modelo
-        print("[IA] Cargando YOLOv8n...")
-        self.model = YOLO("yolov8n.pt")
-        
-        # Configurar dispositivo
-        if DETECTION_CONFIG['device_type'] == 'cuda' and torch.cuda.is_available():
+        self.backend = "cpu"
+        self.device = "cpu"
+        self.half_precision = False
+
+        # OpenVINO se intenta primero: descarga la inferencia a la Intel UHD.
+        # El modelo IR se genera durante el build y viaja dentro del .exe.
+        if INFERENCE_CONFIG['backend'] == 'openvino_gpu':
+            self._try_openvino_gpu()
+
+        if self.backend == 'cpu' and torch.cuda.is_available():
+            print("[IA] OpenVINO no disponible; usando CUDA como respaldo")
+            self.model = YOLO(YOLO_GENERAL_MODEL)
             self.device = DETECTION_CONFIG['device']
+            self.backend = "cuda"
+            self.half_precision = DETECTION_CONFIG['half_precision']
             gpu_name = torch.cuda.get_device_name(self.device)
             gpu_memory = torch.cuda.get_device_properties(self.device).total_memory / 1e9
             print(f"[IA] ✓ GPU: {gpu_name}")
@@ -27,17 +35,40 @@ class DetectorIA:
             # Evita errores OOM cuando el sistema atiende 16 cámaras.
             torch.cuda.set_per_process_memory_fraction(0.75)
             torch.cuda.empty_cache()
-        else:
-            self.device = "cpu"
-            print("[IA] ✓ CPU mode (CUDA no disponible)")
-        
-        # Mostrar modelos en modulos/
+        elif self.backend == 'cpu':
+            print("[IA] OpenVINO/CUDA no disponibles; usando CPU")
+            self.model = YOLO(YOLO_GENERAL_MODEL)
+
+        print(f"[IA] Motor activo: {self.backend}")
         print("[IA] Modelos disponibles en modulos/:")
         modulos_path = "modulos"
         if os.path.exists(modulos_path):
             for file in os.listdir(modulos_path):
                 if file.endswith(".pt"):
                     print(f"  ✓ {file}")
+
+    def _try_openvino_gpu(self):
+        """Cargar el IR empaquetado solo si la GPU Intel está disponible."""
+        try:
+            from openvino import Core
+            core = Core()
+            devices = core.available_devices
+            if not any(device.startswith("GPU") for device in devices):
+                print("[IA] OpenVINO no detectó una GPU Intel")
+                return
+
+            base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            model_dir = os.path.join(base_dir, INFERENCE_CONFIG['openvino_model_dir'])
+            if not os.path.isdir(model_dir):
+                print(f"[IA] Modelo OpenVINO no incluido: {model_dir}")
+                return
+
+            self.model = YOLO(model_dir)
+            self.device = INFERENCE_CONFIG['openvino_device']
+            self.backend = "openvino_gpu"
+            print(f"[IA] ✓ OpenVINO GPU activo: {core.get_property('GPU', 'FULL_DEVICE_NAME')}")
+        except Exception as e:
+            print(f"[IA] OpenVINO GPU no disponible: {e}")
 
     def predict(self, frame):
         """Predicción general con optimizaciones para Quadro P1000"""
@@ -46,7 +77,7 @@ class DetectorIA:
             conf=DETECTION_CONFIG['confidence_threshold'],
             device=self.device,
             verbose=False,
-            half=DETECTION_CONFIG['half_precision'],  # FP16 mode
+            half=self.half_precision,
             iou=DETECTION_CONFIG['iou_threshold'],
             imgsz=384,  # Tamaño optimizado
         )
@@ -60,7 +91,7 @@ class DetectorIA:
             conf=DETECTION_CONFIG['confidence_threshold'],
             device=self.device,
             verbose=False,
-            half=DETECTION_CONFIG['half_precision'],
+            half=self.half_precision,
             iou=DETECTION_CONFIG['iou_threshold'],
             imgsz=384,
         )
@@ -72,11 +103,10 @@ class DetectorIA:
     def warmup(self):
         """Calentar GPU antes de uso (reduce primera latencia)"""
         print("[IA] Calentando GPU...")
-        dummy_input = torch.zeros(1, 3, 384, 384)
-        if DETECTION_CONFIG['device_type'] == 'cuda':
-            dummy_input = dummy_input.cuda()
-        
-        with torch.no_grad():
-            self.model(dummy_input, verbose=False)
+        dummy_frame = np.zeros(
+            (DETECTION_CONFIG['frame_resize'][1], DETECTION_CONFIG['frame_resize'][0], 3),
+            dtype=np.uint8,
+        )
+        self.model(dummy_frame, device=self.device, verbose=False, half=self.half_precision)
         
         print("[IA] ✓ GPU lista")

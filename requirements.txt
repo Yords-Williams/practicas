@@ -8,6 +8,7 @@ pyinstaller
 pillow
 qt-material
 onnxruntime-gpu
+openvino>=2024.6
 openpyxl
 scikit-learn
 timm==1.0.11

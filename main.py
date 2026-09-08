@@ -80,29 +80,12 @@ def main():
     except Exception as e:
         print(f"[MAIN] Warmup: {e}")
     
-    # Inicializar sistemas de detección especializados
-    print("[MAIN] Inicializando sistemas de detección...")
-    
-    try:
-        accident_detector = AccidentDetectionSystem()
-        print("[MAIN] ✓ Sistema de detección de accidentes cargado")
-    except Exception as e:
-        print(f"[MAIN] ✗ Error al cargar detector de accidentes: {e}")
-        accident_detector = None
-    
-    try:
-        person_tracker = PersonAppearanceTracker()
-        print("[MAIN] ✓ Rastreador de personas cargado")
-    except Exception as e:
-        print(f"[MAIN] ✗ Error al cargar rastreador de personas: {e}")
-        person_tracker = None
-    
-    try:
-        theft_detector = TheftDetectionSystem()
-        print("[MAIN] ✓ Sistema de detección de robos cargado")
-    except Exception as e:
-        print(f"[MAIN] ✗ Error al cargar detector de robos: {e}")
-        theft_detector = None
+    # Los modelos especializados se cargan solo al seleccionar su modo en la
+    # interfaz. Evita reservar RAM/VRAM para tres modelos que no se usan.
+    accident_detector = None
+    person_tracker = None
+    theft_detector = None
+    print("[MAIN] Detectores especializados: carga bajo demanda")
 
     try:
         fire_detector = FireDetectionSystem(db_path="incidents.db", config_file="fire_config.json")

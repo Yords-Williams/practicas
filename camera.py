@@ -142,7 +142,13 @@ class CamaraRTSP:
                 continue
 
             self.errors = 0
-            self.frame  = frame
+            # Con 16 cámaras, conservar cuadros nativos (por ejemplo, 1080p)
+            # consume mucha RAM. El análisis y el mosaico usan la resolución
+            # configurada, por lo que se descarta el cuadro grande aquí.
+            target_size = DETECTION_CONFIG['frame_resize']
+            if (frame.shape[1], frame.shape[0]) != target_size:
+                frame = cv2.resize(frame, target_size, interpolation=cv2.INTER_AREA)
+            self.frame = frame
             self.frames_read += 1
 
             current_time = time.time()
@@ -175,4 +181,3 @@ class CamaraRTSP:
         self.running = False
         if self.cap:
             self.cap.release()
-

@@ -1,4 +1,5 @@
 import cv2
+import gc
 import json
 import os
 import numpy as np
@@ -657,6 +658,7 @@ class CCTVWindow(QWidget):
     def on_mode_changed(self, index):
         """Cambiar modo de detección"""
         self.detection_mode = self.modeSelector.itemData(index)
+        self._load_selected_detector()
         mode_names = {
             "general": "Detección General",
             "accidentes": "Detección de Accidentes",
@@ -664,6 +666,45 @@ class CCTVWindow(QWidget):
             "robos": "Detección de Robos"
         }
         print(f"[UI] Modo: {mode_names.get(self.detection_mode, 'Desconocido')}")
+
+    def _load_selected_detector(self):
+        """Cargar un único detector especializado cuando realmente se necesita."""
+        detector_attrs = {
+            "accidentes": "accident_detector",
+            "personas": "person_tracker",
+            "robos": "theft_detector",
+        }
+        selected_attr = detector_attrs.get(self.detection_mode)
+
+        # Descargar los otros módulos especializados antes de cargar uno nuevo.
+        # El detector general y el de incendios permanecen disponibles.
+        for mode, attr in detector_attrs.items():
+            if attr != selected_attr and getattr(self, attr, None) is not None:
+                setattr(self, attr, None)
+        gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+        if selected_attr is None or getattr(self, selected_attr, None) is not None:
+            return
+
+        try:
+            if self.detection_mode == "accidentes":
+                from modulos.choques.detector import AccidentDetectionSystem
+                self.accident_detector = AccidentDetectionSystem()
+            elif self.detection_mode == "personas":
+                from modulos.person_identifier import PersonAppearanceTracker
+                self.person_tracker = PersonAppearanceTracker()
+            elif self.detection_mode == "robos":
+                from modulos.robo.inference import TheftDetectionSystem
+                self.theft_detector = TheftDetectionSystem()
+            print(f"[UI] ✓ Detector de {self.detection_mode} cargado bajo demanda")
+        except Exception as e:
+            print(f"[UI] ✗ No se pudo cargar detector de {self.detection_mode}: {e}")
 
     def update(self):
         """Actualizar frames y aplicar detecciones"""
@@ -688,8 +729,10 @@ class CCTVWindow(QWidget):
                 self.labels[i].setStyleSheet("background-color: #1a1a1a; border: 2px solid #34495e; border-radius: 5px; color: #7f8c8d; font-weight: bold;")
                 continue
 
-            # Redimensionar según config optimizada (384x216)
-            frame = cv2.resize(frame, DETECTION_CONFIG['frame_resize'])
+            # Normalmente el hilo de captura ya entrega este tamaño. Evitar una
+            # copia adicional por cámara y por tick reduce presión de RAM.
+            if (frame.shape[1], frame.shape[0]) != DETECTION_CONFIG['frame_resize']:
+                frame = cv2.resize(frame, DETECTION_CONFIG['frame_resize'])
             self.frame_count += 1
             self.total_frames_processed += 1
 

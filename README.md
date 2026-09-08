@@ -52,6 +52,9 @@ Copy-Item cameras_config.json.example cameras_config.json
 
 # 5. Ejecutar
 python main.py
+
+# 6. Generar el ejecutable
+pyinstaller --onefile --windowed --icon=app.ico --name “Alertas tempranas” main.py 
 ```
 
 ---

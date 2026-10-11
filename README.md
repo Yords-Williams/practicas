@@ -163,7 +163,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 .\build_exe.ps1
 ```
 
-El resultado se genera en `dist\AlertasTempranas\`. Comprimir en `.zip` y copiar a la PC de destino.
+El resultado se genera en `dist\AlertasTempranas\`. Para crear un instalador,
+abre `Alertas.iss` con Inno Setup 6 y selecciona **Compilar**. Se generará
+`dist\Alertas-Setup.exe`. La compilación del instalador requiere que primero
+termine correctamente `build_exe.ps1`.
 
 **Requisitos en PC de destino:** Windows 10/11 + Driver NVIDIA ≥ 522.06
 

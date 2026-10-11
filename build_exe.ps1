@@ -4,7 +4,7 @@
 
 Set-Location $PSScriptRoot
 
-$PYTHON = ".\practicas\Scripts\python.exe"
+$PYTHON = ".\venv\Scripts\python.exe"
 $DIST   = "dist\AlertasTempranas"
 $SPEC   = "Alertas tempranas.spec"
 $OVMODEL = "yolov8n_openvino_model"
@@ -12,6 +12,11 @@ $OVMODEL = "yolov8n_openvino_model"
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "  BUILD — Alertas Tempranas"                            -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
+
+if (!(Test-Path $PYTHON)) {
+    Write-Host "[ERROR] No se encontró Python en $PYTHON. Activa o crea el entorno virtual del proyecto." -ForegroundColor Red
+    exit 1
+}
 
 # ── 0. Asegurar __init__.py en modulos/ (namespace package) ──────────────────
 if (!(Test-Path "modulos\__init__.py")) {
@@ -37,10 +42,15 @@ if (!(Test-Path "$OVMODEL\yolov8n.xml")) {
 # ── 3. Compilar con PyInstaller ───────────────────────────────────────────────
 Write-Host "`n[3/5] Compilando con PyInstaller (esto tarda 5-15 min)..." -ForegroundColor Yellow
 $env:PYTHONIOENCODING = 'utf-8'
-& $PYTHON -m PyInstaller $SPEC --noconfirm --clean
+& $PYTHON -m PyInstaller $SPEC --noconfirm --clean --distpath dist
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERROR] PyInstaller falló. Revisa los mensajes anteriores." -ForegroundColor Red
+    exit 1
+}
+
+if (!(Test-Path "$DIST\AlertasTempranas.exe")) {
+    Write-Host "`n[ERROR] PyInstaller terminó, pero no se encontró $DIST\AlertasTempranas.exe." -ForegroundColor Red
     exit 1
 }
 
@@ -53,7 +63,7 @@ Write-Host "`n[4/5] Copiando archivos de configuración..." -ForegroundColor Yel
 "@ | Out-File -FilePath "$DIST\cameras_config.json" -Encoding utf8 -Force
 
 # Copiar configs con valores por defecto si existen
-foreach ($f in @("fire_config.json","notifications_config.json")) {
+foreach ($f in @("fire_config.json")) {
     if (Test-Path $f) {
         Copy-Item $f "$DIST\$f" -Force
         Write-Host "  Copiado: $f"

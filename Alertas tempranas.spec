@@ -5,7 +5,11 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        ('yolov8n.pt', '.'),
+        ('yolov8n_openvino_model', 'yolov8n_openvino_model'),
+        ('assets', 'assets'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -19,10 +23,9 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='Alertas tempranas',
+    exclude_binaries=True,
+    name='AlertasTempranas',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,5 +38,15 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['images.ico'],
+    icon=['assets/app.ico'],
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='AlertasTempranas',
 )

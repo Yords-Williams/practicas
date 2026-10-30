@@ -1,6 +1,6 @@
 """
 Configuración centralizada para CCTV AI PRO
-Optimizada para: NVIDIA Quadro P1000 4 GB + Intel Core i7-10700 (16 cámaras)
+Optimizada para: NVIDIA Quadro P1000 4 GB + Intel Core i7-10700 (12 cámaras)
 """
 
 import os
@@ -10,13 +10,18 @@ WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULOS_DIR = os.path.join(WORKSPACE_DIR, "modulos")
 BUILD_DIR = os.path.join(WORKSPACE_DIR, "build")
 
-# Modelos YOLO principales
-YOLO_GENERAL_MODEL = os.path.join(WORKSPACE_DIR, "yolov8n.pt")
-
-# Modelos especializados en modulos/
-ACCIDENT_DETECTION_MODEL = os.path.join(MODULOS_DIR, "choques", "best.pt")
-DAMAGE_DETECTION_MODEL = os.path.join(MODULOS_DIR, "detector_de_auto_con_dano.pt")
-FIRE_DETECTION_MODEL = os.path.join(MODULOS_DIR, "incendio", "best.pt")
+# Un único modelo YOLO para todos los módulos de detección. En una instalación
+# distribuida puede no existir el modelo entrenado, así que se usa el modelo
+# base incluido como respaldo.
+_TRAINED_MODEL = os.path.join(MODULOS_DIR, "best.pt")
+_BASE_MODEL = os.path.join(WORKSPACE_DIR, "yolov8n.pt")
+DETECTION_MODEL = (
+    _TRAINED_MODEL if os.path.exists(_TRAINED_MODEL) else _BASE_MODEL
+)
+YOLO_GENERAL_MODEL = DETECTION_MODEL
+ACCIDENT_DETECTION_MODEL = DETECTION_MODEL
+FIRE_DETECTION_MODEL = DETECTION_MODEL
+DAMAGE_DETECTION_MODEL = DETECTION_MODEL
 
 # Verificar disponibilidad de modelos
 AVAILABLE_MODELS = {
@@ -45,7 +50,7 @@ CAMERAS_CONFIG = [
 ]
 
 # ============================================================================
-# PERFIL PARA NVIDIA QUADRO P1000 4 GB + i7-10700 / 16 CÁMARAS
+# PERFIL PARA NVIDIA QUADRO P1000 4 GB + i7-10700 / 12 CÁMARAS
 # ============================================================================
 
 # Hardware detectado
@@ -61,14 +66,15 @@ DETECTION_CONFIG = {
     "confidence_threshold": 0.45,           # Balance velocidad/precisión
     "device": 0,                            # GPU: 0 (CUDA), CPU: "cpu"
     "device_type": "cuda",                  # "cuda" o "cpu"
-    # La interfaz refresca a 10 FPS. Con 16 fuentes, prioriza fluidez y
-    # estabilidad de VRAM frente a intentar inferir 16 × 25 FPS.
+    # La vista y captura se mantienen a 10 FPS; el trabajador IA muestrea
+    # hasta 4 frames/s por cámara, sujeto al rendimiento real del equipo.
     "fps_limit": 10,
     "frame_resize": (384, 216),             # Optimizado (16:9, divisible por 32)
     "batch_size": 1,                        # Inferencia serial: evita picos de VRAM
     "workers": 4,                           # CPU workers (mitad de cores)
     "half_precision": True,                 # FP16 para acelerar GPU
     "iou_threshold": 0.45,                  # IoU para NMS
+    "analysis_fps_per_camera": 4,            # Meta; puede bajar si la inferencia no alcanza
 }
 
 # Motor de inferencia distribuible. OpenVINO usa la Intel UHD 630 mediante
@@ -92,6 +98,7 @@ CAPTURE_CONFIG = {
 # Parámetros de accidentes
 ACCIDENT_CONFIG = {
     "confidence_threshold": 0.4,
+    "alert_cooldown_seconds": 60,
     "vehicle_classes": [2, 3, 5, 7],       # COCO: car, motorcycle, bus, truck
     "max_distance": 50,
     "deceleration_threshold": 0.7,
@@ -117,14 +124,11 @@ THEFT_DETECTION_CONFIG = {
 
 # Threading y paralelismo
 THREADING_CONFIG = {
-    "max_cameras": 16,                      # Límite total de fuentes configurables
-    "grid_columns": 4,                      # Mosaico 4 × 4
-    "max_capture_threads": 16,              # Un hilo ligero de captura por cámara
+    "max_cameras": 12,                      # Límite total de fuentes configurables
+    "grid_columns": 3,                      # Mosaico 4 × 3 con panel lateral
+    "max_capture_threads": 12,              # Un hilo ligero de captura por cámara
     "detector_threads": 1,                  # 1 thread para detector (GPU)
     "enable_async": True,                   # Captura asíncrona
-    # Se analiza una cámara por tick, rotando por las 16. Esto evita ejecutar
-    # varios modelos YOLO a la vez en una GPU de 4 GB.
-    "analysis_cameras_per_tick": 1,
 }
 
 # Optimizaciones para CPU

@@ -4,17 +4,38 @@
 
 Set-Location $PSScriptRoot
 
-$PYTHON = ".\venv\Scripts\python.exe"
-$DIST   = "dist\AlertasTempranas"
+$PYTHON = ".\.venv\Scripts\python.exe"
+if (!(Test-Path $PYTHON)) {
+    $PYTHON = ".\venv\Scripts\python.exe"
+}
+$DIST   = "dist\release\AlertasTempranas"
+$DISTPATH = "dist\release"
 $SPEC   = "Alertas tempranas.spec"
 $OVMODEL = "yolov8n_openvino_model"
+$ISCC = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+$INSTALLER = "dist\instalador\Instalar_Alertas_Tempranas.exe"
 
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "  BUILD — Alertas Tempranas"                            -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
 if (!(Test-Path $PYTHON)) {
-    Write-Host "[ERROR] No se encontró Python en $PYTHON. Activa o crea el entorno virtual del proyecto." -ForegroundColor Red
+    Write-Host "[ERROR] No se encontró Python en .venv ni en venv. Activa o crea el entorno virtual del proyecto." -ForegroundColor Red
+    exit 1
+}
+
+if (!(Test-Path $ISCC)) {
+    $ISCC_COMMAND = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+    if ($ISCC_COMMAND) {
+        $ISCC = $ISCC_COMMAND.Source
+    } else {
+        Write-Host "[ERROR] No se encontró ISCC.exe de Inno Setup 6." -ForegroundColor Red
+        exit 1
+    }
+}
+
+if (!(Test-Path "yolov8n.pt")) {
+    Write-Host "[ERROR] Falta yolov8n.pt, requerido para detección. No se puede crear el instalador." -ForegroundColor Red
     exit 1
 }
 
@@ -26,7 +47,7 @@ if (!(Test-Path "modulos\__init__.py")) {
 
 # ── 1. Limpiar builds anteriores ─────────────────────────────────────────────
 Write-Host "`n[1/4] Limpiando builds anteriores..." -ForegroundColor Yellow
-if (Test-Path "dist\AlertasTempranas") { Remove-Item "dist\AlertasTempranas" -Recurse -Force }
+if (Test-Path $DIST) { Remove-Item $DIST -Recurse -Force }
 if (Test-Path "build\AlertasTempranas") { Remove-Item "build\AlertasTempranas" -Recurse -Force }
 
 # ── 2. Exportar el modelo para la GPU Intel ──────────────────────────────────
@@ -42,7 +63,7 @@ if (!(Test-Path "$OVMODEL\yolov8n.xml")) {
 # ── 3. Compilar con PyInstaller ───────────────────────────────────────────────
 Write-Host "`n[3/5] Compilando con PyInstaller (esto tarda 5-15 min)..." -ForegroundColor Yellow
 $env:PYTHONIOENCODING = 'utf-8'
-& $PYTHON -m PyInstaller $SPEC --noconfirm --clean --distpath dist
+& $PYTHON -m PyInstaller $SPEC --noconfirm --clean --distpath $DISTPATH
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERROR] PyInstaller falló. Revisa los mensajes anteriores." -ForegroundColor Red
@@ -85,14 +106,23 @@ REQUISITOS DE LA PC DE DESTINO:
     Descargar en: https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 INSTALACIÓN:
-  1. Copia toda esta carpeta "AlertasTempranas" a la PC de destino.
+  1. Ejecuta Instalar_Alertas_Tempranas.exe y completa el asistente.
   2. Instala los drivers Intel/NVIDIA y el VC++ Redistributable si es necesario.
-  3. Ejecuta AlertasTempranas.exe
+  3. Abre Alertas Tempranas desde el acceso directo creado.
+  4. Para desinstalar, usa Configuración de Windows > Aplicaciones o el acceso
+     directo de desinstalación del menú Inicio.
 
 CONFIGURACIÓN DE CÁMARAS:
   • Al abrir la app por primera vez, ve a Gestionar Cámaras y agrega las
     cámaras RTSP de la institución (rtsp://admin:pass@192.168.18.x:554/…).
-  • La configuración se guarda en cameras_config.json (editable).
+  • La configuración, destinatarios y base de datos se guardan en:
+    %LOCALAPPDATA%\Alertas Tempranas Videovigilancia
+  • Las credenciales configuradas en Notificaciones se protegen con DPAPI
+    de Windows para el usuario actual; no se incluyen en el instalador.
+  • En Notificaciones, elige Por defecto o Manual por canal y activa el canal.
+    Si faltan credenciales para ese perfil, se solicitan una vez y se guardan
+    cifradas para la cuenta de Windows actual. Los destinatarios se administran
+    en la página Destinatarios y se asignan a Por defecto o Manual.
 
 PRIMER ARRANQUE:
   • La app usa primero OpenVINO en la GPU Intel UHD; si no está disponible,
@@ -105,14 +135,26 @@ SOPORTE:
   • Institución: Municipalidad Distrital de Caracoto — Serenazgo Municipal
 "@ | Out-File -FilePath "$DIST\LEEME_INSTALACION.txt" -Encoding utf8
 
+# ── 6. Crear instalador y desinstalador con Inno Setup ────────────────────────
+Write-Host "`n[6/6] Compilando instalador de Inno Setup..." -ForegroundColor Yellow
+& $ISCC /Qp "Alertas.iss"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n[ERROR] Inno Setup no pudo compilar el instalador." -ForegroundColor Red
+    exit 1
+}
+if (!(Test-Path $INSTALLER)) {
+    Write-Host "`n[ERROR] No se encontró el instalador generado: $INSTALLER." -ForegroundColor Red
+    exit 1
+}
+
 # ── Resumen ───────────────────────────────────────────────────────────────────
 $size = (Get-ChildItem $DIST -Recurse | Measure-Object -Property Length -Sum).Sum
 $sizeMB = [math]::Round($size / 1MB, 0)
+$installerSizeMB = [math]::Round((Get-Item $INSTALLER).Length / 1MB, 0)
 
 Write-Host "`n======================================================" -ForegroundColor Cyan
-Write-Host "  BUILD COMPLETADO" -ForegroundColor Green
-Write-Host "  Carpeta: $DIST"
-Write-Host "  Tamanio: $sizeMB MB"
+Write-Host "  BUILD E INSTALADOR COMPLETADOS" -ForegroundColor Green
+Write-Host "  Carpeta de la aplicacion: $DIST ($sizeMB MB)"
+Write-Host "  Instalador: $INSTALLER ($installerSizeMB MB)"
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "`nPara distribuir: comprime la carpeta '$DIST' en un ZIP."
-Write-Host "El usuario solo necesita descomprimirla y ejecutar AlertasTempranas.exe`n"
+Write-Host "`nDistribuye '$INSTALLER'. Incluye instalacion y desinstalacion desde Windows.`n"

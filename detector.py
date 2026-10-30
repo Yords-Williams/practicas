@@ -14,6 +14,21 @@ class DetectorIA:
         self.backend = "cpu"
         self.device = "cpu"
         self.half_precision = False
+        if not os.path.isfile(YOLO_GENERAL_MODEL):
+            raise FileNotFoundError(
+                "No se encontró el modelo YOLO. Coloca 'modulos\\best.pt' "
+                "o 'yolov8n.pt' junto al ejecutable."
+            )
+        trained_model = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "modulos", "best.pt"
+        )
+        if os.path.basename(YOLO_GENERAL_MODEL) == "yolov8n.pt" and not os.path.isfile(
+            trained_model
+        ):
+            print(
+                "[IA] Advertencia: modulos\\best.pt no está disponible; "
+                "se usará yolov8n.pt."
+            )
 
         # OpenVINO se intenta primero: descarga la inferencia a la Intel UHD.
         # El modelo IR se genera durante el build y viaja dentro del .exe.
@@ -32,7 +47,7 @@ class DetectorIA:
             print(f"[IA] ✓ VRAM: {gpu_memory:.1f}GB")
             
             # Reservar margen para CUDA/OpenCV y los detectores especializados.
-            # Evita errores OOM cuando el sistema atiende 16 cámaras.
+            # Evita errores OOM cuando el sistema atiende 12 cámaras.
             torch.cuda.set_per_process_memory_fraction(0.75)
             torch.cuda.empty_cache()
         elif self.backend == 'cpu':

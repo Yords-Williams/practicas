@@ -20,24 +20,31 @@ Uso:
 
 import json
 import os
-import requests
 from datetime import datetime
 from typing import Optional, List
+
+try:
+    import requests
+except ModuleNotFoundError:  # pragma: no cover - only for minimal environments
+    requests = None
+from app_storage import user_data_path
+from modulos.alarma.secure_config import unprotect_notification_secrets
 
 
 class TelegramNotifier:
     """Notificador Telegram simple y confiable con múltiples destinatarios"""
     
-    def __init__(self, config_file: str = "notifications_config.json"):
+    def __init__(self, config_file: Optional[str] = None):
         """
         Inicializar notificador Telegram
         
         Args:
             config_file: Archivo de config con token y chat_ids
         """
-        self.config_file = config_file
-        self.config = self._load_config()
+        self.config_file = config_file or user_data_path("notifications_config.json")
+        self.config = unprotect_notification_secrets(self._load_config())
         self.alerts_sent = []
+        self.last_error = None
         
         # Obtener credenciales
         telegram_config = self.config.get('telegram', {})
@@ -62,6 +69,9 @@ class TelegramNotifier:
                 print(f"  💬 Enviando a {len(self.chat_ids)} chat(s)")
         else:
             print("⚠️ Telegram no configurado")
+
+        if requests is None:
+            print("⚠️ requests no está instalado; Telegram no se podrá enviar.")
     
     def _load_config(self) -> dict:
         """Cargar configuración"""
@@ -89,8 +99,10 @@ class TelegramNotifier:
                         with open(self.config_file, 'w', encoding='utf-8') as f:
                             json.dump(config, f, indent=2, ensure_ascii=False)
                     return config
-            except:
-                pass
+            except (OSError, json.JSONDecodeError) as error:
+                raise RuntimeError(
+                    f"No se pudo leer la configuración de Telegram: {error}"
+                ) from error
         
         config = {
             "telegram": {
@@ -126,16 +138,25 @@ class TelegramNotifier:
         Returns:
             True si se envió a todos
         """
+        self.last_error = None
+        if requests is None:
+            self.last_error = "Falta la dependencia 'requests'."
+            print(f"✗ Telegram: {self.last_error}")
+            return False
+
         if not self.token or self.token == "YOUR_TELEGRAM_BOT_TOKEN":
-            print("✗ Telegram no está configurado")
+            self.last_error = "Telegram no está configurado."
+            print(f"✗ {self.last_error}")
             return False
         
         if not self.chat_ids:
-            print("✗ No hay chats configurados")
+            self.last_error = "No hay destinatarios activos configurados para Telegram."
+            print(f"✗ {self.last_error}")
             return False
 
         if self.token.startswith("YOUR"):
-            print("✗ Telegram no está configurado correctamente")
+            self.last_error = "El token de Telegram no está configurado correctamente."
+            print(f"✗ {self.last_error}")
             return False
         
         # Construir mensaje si no está especificado
@@ -143,6 +164,7 @@ class TelegramNotifier:
             message = self._build_message(camera, alert_type, severity, details)
         
         success_count = 0
+        failures = []
         
         try:
             url = f"https://api.telegram.org/bot{self.token}/sendMessage"
@@ -161,17 +183,33 @@ class TelegramNotifier:
                     
                     if response.status_code == 200:
                         result = response.json()
+                        if not result.get("ok", True):
+                            description = result.get("description", "Telegram rechazó el mensaje.")
+                            failures.append(str(description))
+                            continue
                         msg_id = result.get('result', {}).get('message_id')
-                        print(f"  ✓ {chat_id} (ID: {msg_id})")
+                        print(f"  ✓ Mensaje enviado (ID: {msg_id})")
                         success_count += 1
                     else:
-                        error = response.json()
-                        print(f"  ✗ {chat_id}: {error}")
+                        try:
+                            error = response.json()
+                            description = error.get(
+                                "description",
+                                f"Telegram respondió HTTP {response.status_code}.",
+                            )
+                        except (ValueError, AttributeError):
+                            description = f"Telegram respondió HTTP {response.status_code}."
+                        failures.append(str(description))
+                        print(f"  ✗ {description}")
                         
                 except requests.Timeout:
-                    print(f"  ✗ {chat_id}: Timeout")
+                    failures.append("Se agotó el tiempo de espera al conectar con Telegram.")
+                    print("  ✗ Timeout al conectar con Telegram")
                 except Exception as e:
-                    print(f"  ✗ {chat_id}: {e}")
+                    failures.append(
+                        f"Error de conexión con Telegram ({type(e).__name__})."
+                    )
+                    print(f"  ✗ Error de conexión con Telegram: {type(e).__name__}")
             
             if success_count > 0:
                 print(f"✓ Telegram enviado a {success_count}/{len(self.chat_ids)} chat(s)")
@@ -186,10 +224,14 @@ class TelegramNotifier:
                 return True
             else:
                 print("✗ No se envió a ningún chat")
+                self.last_error = "; ".join(dict.fromkeys(failures)) or (
+                    "Telegram no aceptó el mensaje."
+                )
                 return False
                 
         except Exception as e:
-            print(f"✗ Error: {e}")
+            self.last_error = f"Error de Telegram ({type(e).__name__})."
+            print(f"✗ {self.last_error}")
             return False
     
     def _build_message(self, camera: str, alert_type: str, severity: str, details: str) -> str:
@@ -209,13 +251,10 @@ class TelegramNotifier:
         
         icon = icons.get(alert_type, '⚠️')
         sev_icon = severity_icons.get(severity, '🟡')
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        
         message = f"""<b>{icon} ALERTA CCTV - {alert_type.upper()}</b>
 
 <b>Cámara:</b> {camera}
 <b>Severidad:</b> {sev_icon} {severity}
-<b>Hora:</b> {timestamp}
 
 <b>Detalles:</b>
 {details}

@@ -12,8 +12,9 @@ from PySide6.QtCore import Qt
 import json
 import os
 from config import THREADING_CONFIG
+from app_storage import user_data_path
 
-CAMERAS_FILE = "cameras_config.json"
+CAMERAS_FILE = user_data_path("cameras_config.json")
 
 # Tipos de fuente de video
 TYPE_RTSP  = "RTSP / Red"
@@ -30,6 +31,7 @@ class CameraDialog(QDialog):
         self.setMinimumWidth(900)
         self.setMinimumHeight(460)
         self.cameras = self.load_cameras()
+        self.editing_row = None
         self.init_ui()
 
     # ── UI ────────────────────────────────────────────────────────────────────
@@ -44,7 +46,7 @@ class CameraDialog(QDialog):
         self.table.setColumnWidth(0, 130)
         self.table.setColumnWidth(1, 110)
         self.table.setColumnWidth(2, 380)
-        self.table.setColumnWidth(3, 120)
+        self.table.setColumnWidth(3, 170)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.refresh_table()
         layout.addWidget(self.table)
@@ -72,10 +74,13 @@ class CameraDialog(QDialog):
 
         # Panel RTSP
         rtsp_w = QWidget()
-        rtsp_l = QHBoxLayout(rtsp_w); rtsp_l.setContentsMargins(0,0,0,0)
+        rtsp_l = QVBoxLayout(rtsp_w); rtsp_l.setContentsMargins(0,0,0,0)
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("rtsp://usuario:contraseña@192.168.1.100:554/stream")
+        self.url_input.setPlaceholderText("Substream para mosaico: rtsp://.../sub")
         rtsp_l.addWidget(self.url_input)
+        self.high_url_input = QLineEdit()
+        self.high_url_input.setPlaceholderText("Mainstream para vista individual 720p/1080p: rtsp://.../main")
+        rtsp_l.addWidget(self.high_url_input)
 
         # Panel Cámara Local
         local_w = QWidget()
@@ -111,10 +116,10 @@ class CameraDialog(QDialog):
         for chk in (self.chk_fire, self.chk_theft, self.chk_accident):
             form.addWidget(chk)
 
-        add_btn = QPushButton("➕  Agregar")
-        add_btn.setStyleSheet("background:#2980b9; color:white; font-weight:bold; padding:4px 10px;")
-        add_btn.clicked.connect(self.add_camera)
-        form.addWidget(add_btn)
+        self.add_btn = QPushButton("➕  Agregar")
+        self.add_btn.setStyleSheet("background:#2980b9; color:white; font-weight:bold; padding:4px 10px;")
+        self.add_btn.clicked.connect(self.add_camera)
+        form.addWidget(self.add_btn)
 
         layout.addLayout(form)
 
@@ -168,14 +173,24 @@ class CameraDialog(QDialog):
             tipo = TYPE_LABELS.get(cam.get("source_type", "rtsp"), "RTSP/Red")
             self.table.setItem(row, 0, QTableWidgetItem(cam.get("name", "")))
             self.table.setItem(row, 1, QTableWidgetItem(tipo))
-            self.table.setItem(row, 2, QTableWidgetItem(cam.get("url", "")))
+            urls = cam.get("url", "")
+            if cam.get("high_resolution_url"):
+                urls += f"\nMain: {cam['high_resolution_url']}"
+            self.table.setItem(row, 2, QTableWidgetItem(urls))
+            actions = QWidget()
+            actions_layout = QHBoxLayout(actions)
+            actions_layout.setContentsMargins(2, 0, 2, 0)
+            edit_btn = QPushButton("Editar")
+            edit_btn.clicked.connect(lambda _checked=False, r=row: self.edit_camera(r))
             del_btn = QPushButton("Eliminar")
-            del_btn.clicked.connect(lambda checked, r=row: self.delete_camera(r))
+            del_btn.clicked.connect(lambda _checked=False, r=row: self.delete_camera(r))
+            actions_layout.addWidget(edit_btn)
+            actions_layout.addWidget(del_btn)
             del_btn.setStyleSheet("background:#e74c3c; color:white;")
-            self.table.setCellWidget(row, 3, del_btn)
+            self.table.setCellWidget(row, 3, actions)
 
     def add_camera(self):
-        if len(self.cameras) >= THREADING_CONFIG['max_cameras']:
+        if self.editing_row is None and len(self.cameras) >= THREADING_CONFIG['max_cameras']:
             QMessageBox.warning(
                 self,
                 "Límite de cámaras",
@@ -186,6 +201,7 @@ class CameraDialog(QDialog):
         name = self.name_input.text().strip()
         url  = self._get_url()
         tipo_idx = self.type_combo.currentIndex()
+        high_url = self.high_url_input.text().strip() if tipo_idx == 0 else ""
         tipo_key = ["rtsp", "local", "file"][tipo_idx]
 
         if not name:
@@ -199,26 +215,68 @@ class CameraDialog(QDialog):
         if tipo_idx == 0 and not url.startswith(("rtsp://", "rtsps://", "http://", "https://", "rtmp://")):
             QMessageBox.warning(self, "Error", "La URL RTSP debe comenzar con rtsp://, http:// o rtmp://")
             return
+        if high_url and not high_url.startswith(("rtsp://", "rtsps://", "http://", "https://", "rtmp://")):
+            QMessageBox.warning(self, "Error", "La URL mainstream debe ser una URL RTSP/HTTP válida.")
+            return
         if tipo_idx == 2 and not os.path.exists(url):
             QMessageBox.warning(self, "Error", f"No se encontró el archivo:\n{url}")
             return
 
-        self.cameras.append({
+        camera = {
             "name":             name,
             "url":              url,
+            "high_resolution_url": high_url,
             "source_type":      tipo_key,
             "detect_fire":      self.chk_fire.isChecked(),
             "detect_theft":     self.chk_theft.isChecked(),
             "detect_accident":  self.chk_accident.isChecked(),
-        })
+        }
+        if self.editing_row is None:
+            self.cameras.append(camera)
+        else:
+            self.cameras[self.editing_row] = camera
+            self.editing_row = None
+            self.add_btn.setText("➕  Agregar")
         self.name_input.clear()
         self.url_input.clear()
+        self.high_url_input.clear()
         self.file_input.clear()
         self.local_spin.setValue(0)
         self.refresh_table()
-        QMessageBox.information(self, "Éxito", "Fuente agregada. Haz clic en 'Guardar Cambios'.")
+        QMessageBox.information(self, "Éxito", "Fuente guardada en el formulario. Haz clic en 'Guardar Cambios'.")
+
+    def edit_camera(self, row):
+        camera = self.cameras[row]
+        source_type = camera.get("source_type", "rtsp")
+        self.editing_row = row
+        self.name_input.setText(camera.get("name", ""))
+        self.url_input.clear()
+        self.high_url_input.clear()
+        self.file_input.clear()
+        self.chk_fire.setChecked(camera.get("detect_fire", True))
+        self.chk_theft.setChecked(camera.get("detect_theft", True))
+        self.chk_accident.setChecked(camera.get("detect_accident", True))
+
+        if source_type == "local":
+            self.type_combo.setCurrentIndex(1)
+            source = camera.get("url", "local:0").replace("local:", "").replace("cam:", "")
+            self.local_spin.setValue(int(source) if source.isdigit() else 0)
+        elif source_type == "file":
+            self.type_combo.setCurrentIndex(2)
+            self.file_input.setText(camera.get("url", ""))
+        else:
+            self.type_combo.setCurrentIndex(0)
+            self.url_input.setText(camera.get("url", ""))
+            self.high_url_input.setText(camera.get("high_resolution_url", ""))
+
+        self.add_btn.setText("Guardar cámara")
 
     def delete_camera(self, row):
+        if self.editing_row == row:
+            self.editing_row = None
+            self.add_btn.setText("➕  Agregar")
+        elif self.editing_row is not None and self.editing_row > row:
+            self.editing_row -= 1
         name = self.cameras[row]['name']
         if QMessageBox.question(self, "Confirmar", f"¿Eliminar '{name}'?") == QMessageBox.Yes:
             self.cameras.pop(row)
@@ -263,6 +321,7 @@ class CameraDialog(QDialog):
                 normalized.append({
                     'name':            cam.get('name', ''),
                     'url':             url,
+                    'high_resolution_url': cam.get('high_resolution_url', ''),
                     'source_type':     stype,
                     'detect_fire':     cam.get('detect_fire',     True),
                     'detect_theft':    cam.get('detect_theft',    True),

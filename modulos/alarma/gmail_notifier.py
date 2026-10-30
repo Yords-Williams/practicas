@@ -25,20 +25,22 @@ from typing import Optional, List
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
+from app_storage import user_data_path
+from modulos.alarma.secure_config import unprotect_notification_secrets
 
 
 class GmailNotifier:
     """Notificador Gmail simple y confiable"""
     
-    def __init__(self, config_file: str = "notifications_config.json"):
+    def __init__(self, config_file: Optional[str] = None):
         """
         Inicializar notificador Gmail
         
         Args:
             config_file: Archivo de config con credenciales
         """
-        self.config_file = config_file
-        self.config = self._load_config()
+        self.config_file = config_file or user_data_path("notifications_config.json")
+        self.config = unprotect_notification_secrets(self._load_config())
         self.alerts_sent = []
         
         # Obtener credenciales
@@ -76,8 +78,10 @@ class GmailNotifier:
                         with open(self.config_file, 'w', encoding='utf-8') as f:
                             json.dump(config, f, indent=2, ensure_ascii=False)
                     return config
-            except:
-                pass
+            except (OSError, json.JSONDecodeError) as error:
+                raise RuntimeError(
+                    f"No se pudo leer la configuración de Gmail: {error}"
+                ) from error
         
         config = {
             "gmail": {
@@ -131,7 +135,12 @@ class GmailNotifier:
         try:
             # Crear mensaje multipart
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = f"🚨 ALERTA CCTV - {alert_type.upper()}"
+            subject = (
+                "PRUEBA DE NOTIFICACIONES"
+                if alert_type.lower() == "prueba"
+                else f"🚨 ALERTA CCTV - {alert_type.upper()}"
+            )
+            msg['Subject'] = subject
             msg['From'] = self.sender
             msg['To'] = self.to_emails[0]  # Principal
             msg['Bcc'] = ', '.join(self.to_emails[1:]) if len(self.to_emails) > 1 else ''
@@ -142,13 +151,12 @@ class GmailNotifier:
               <head></head>
               <body style="font-family: Arial; background-color: #f5f5f5;">
                 <div style="max-width: 600px; margin: 20px auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                  <h2 style="color: #e74c3c; text-align: center;">🚨 ALERTA CCTV</h2>
+                  <h2 style="color: #e74c3c; text-align: center;">{subject}</h2>
                   
                   <div style="background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p><strong>Tipo:</strong> {alert_type.upper()}</p>
                     <p><strong>Cámara:</strong> {camera}</p>
                     <p><strong>Severidad:</strong> {severity}</p>
-                    <p><strong>Hora:</strong> {datetime.now().strftime('%H:%M:%S')}</p>
                   </div>
                   
                   <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #3498db; margin: 20px 0;">
@@ -227,13 +235,10 @@ class GmailNotifier:
         
         icon = icons.get(alert_type, '⚠️')
         sev_icon = severity_icons.get(severity, '🟡')
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        
         message = f"""{icon} ALERTA CCTV - {alert_type.upper()}
 
 Cámara: {camera}
 Severidad: {sev_icon} {severity}
-Hora: {timestamp}
 
 Detalles:
 {details}

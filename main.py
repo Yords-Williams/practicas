@@ -35,6 +35,7 @@ from modulos.choques.detector import AccidentDetectionSystem
 from modulos.person_identifier import PersonAppearanceTracker
 from modulos.robo.inference import TheftDetectionSystem
 from modulos.incendio.detector import FireDetectionSystem
+from app_storage import user_data_path
 
 def main():
     """Iniciar la aplicación Alertas Tempranas optimizada para Quadro P1000"""
@@ -56,7 +57,11 @@ def main():
 
     for cam_config in cameras_config[:max_cameras]:
         try:
-            cam = CamaraRTSP(cam_config["url"], cam_config["name"])
+            cam = CamaraRTSP(
+                cam_config["url"],
+                cam_config["name"],
+                high_resolution_url=cam_config.get("high_resolution_url"),
+            )
             # Attach camera-specific detection settings (with sensible defaults)
             cam.settings = {
                 'detect_fire': cam_config.get('detect_fire', True),
@@ -80,16 +85,19 @@ def main():
     except Exception as e:
         print(f"[MAIN] Warmup: {e}")
     
-    # Los modelos especializados se cargan solo al seleccionar su modo en la
-    # interfaz. Evita reservar RAM/VRAM para tres modelos que no se usan.
+    # Los módulos de choques y robos se cargan en el trabajador de análisis,
+    # fuera del hilo de la interfaz.
     accident_detector = None
     person_tracker = None
     theft_detector = None
-    print("[MAIN] Detectores especializados: carga bajo demanda")
+    print("[MAIN] Detectores de choques y robos: carga en segundo plano")
 
     try:
-        fire_detector = FireDetectionSystem(db_path="incidents.db", config_file="fire_config.json")
-        fire_detector.add_recipient("Administrador", "admin@example.com", "+1234567890")
+        fire_detector = FireDetectionSystem(
+            db_path=user_data_path("incidents.db"),
+            config_file=user_data_path("fire_config.json"),
+            yolo_model=detector.model,
+        )
         print("[MAIN] ✓ Sistema de detección de incendios cargado")
     except Exception as e:
         print(f"[MAIN] ✗ Error al cargar detector de incendios: {e}")

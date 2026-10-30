@@ -19,6 +19,7 @@ from collections import defaultdict
 import json
 from datetime import datetime
 from ..person_identifier import PersonAppearanceTracker
+from config import YOLO_GENERAL_MODEL
 
 
 def convert_bbox_to_z(bbox):
@@ -210,17 +211,22 @@ class TheftDetectionSystem:
     def __init__(self, video_source=None):
         self.video_source = video_source
         
-        # Forzar GPU 0
-        self.device = 0
-        print(f"Usando GPU: 0 (RTX 3050)")
+        self.device = 0 if torch.cuda.is_available() else "cpu"
+        if self.device == "cpu":
+            print("CUDA no disponible; detector de robos usará CPU.")
+        else:
+            print(f"Detector de robos usando GPU: {torch.cuda.get_device_name(0)}")
         
         # Cargar modelos
         print(f"Cargando modelo YOLO estándar para detección de personas y objetos...")
-        self.yolo_model = YOLO("yolov8n.pt")
+        self.yolo_model = YOLO(YOLO_GENERAL_MODEL)
+        self.inference_calls = 0
         
         # Lazy loading del modelo de actividades sospechosas (cargar solo si se necesita)
         self.suspicious_model = None
         self.suspicious_model_loaded = False
+        self.suspicious_model_load_attempted = False
+        self.suspicious_model_error = None
         
         # Clases COCO
         self.person_class = 0
@@ -299,10 +305,18 @@ class TheftDetectionSystem:
         
     def load_suspicious_model(self):
         """Cargar modelo de actividades sospechosas solo cuando sea necesario"""
-        if not self.suspicious_model_loaded:
+        if self.suspicious_model_loaded or self.suspicious_model_load_attempted:
+            return self.suspicious_model_loaded
+
+        self.suspicious_model_load_attempted = True
+        try:
             print("Cargando modelo de actividades sospechosas...")
             self.suspicious_model = YOLO("Suspicious_Activities_nano.pt")
             self.suspicious_model_loaded = True
+        except Exception as error:
+            self.suspicious_model_error = str(error)
+            print(f"No se pudo cargar el modelo de actividades sospechosas: {error}")
+        return self.suspicious_model_loaded
     
     def categorize_object(self, obj):
         """Clasificar un objeto detectado en celular, arma de fuego o arma blanca."""
@@ -332,6 +346,7 @@ class TheftDetectionSystem:
     def detect_people_and_objects(self, frame):
         """Detectar personas y objetos de valor dentro del mismo flujo de video"""
         relevant_classes = [0, 24, 26, 28, 43, 63, 67, 73, 39, 40, 41, 42]
+        self.inference_calls += 1
         results = self.yolo_model(
             frame,
             verbose=False,
@@ -372,6 +387,7 @@ class TheftDetectionSystem:
                         })
 
         if len(objects_detected) < 5:
+            self.inference_calls += 1
             firearm_results = self.yolo_model(
                 frame,
                 verbose=False,
@@ -398,6 +414,7 @@ class TheftDetectionSystem:
                         })
 
         if people and len(objects_detected) < 3:
+            self.inference_calls += 1
             phone_results = self.yolo_model(
                 frame,
                 verbose=False,
@@ -430,9 +447,15 @@ class TheftDetectionSystem:
         """Detectar peleas, forcejeos, correr"""
         
         # Cargar modelo solo si es necesario
-        if not self.suspicious_model_loaded:
-            self.load_suspicious_model()
+        if not self.load_suspicious_model():
+            return {
+                'fight': False,
+                'running': False,
+                'suspicious_activity': False,
+                'confidence': 0,
+            }
         
+        self.inference_calls += 1
         results = self.suspicious_model(frame, verbose=False, device=self.device)
         
         suspicious = {

@@ -33,8 +33,10 @@ class CamaraRTSP:
     Corre en hilo daemon con reconexión automática.
     """
 
-    def __init__(self, url, name):
+    def __init__(self, url, name, high_resolution_url=None):
         self.url   = url
+        self.high_resolution_url = high_resolution_url or ""
+        self.current_url = url
         self.name  = name
         self.frame = None
         self.running = True
@@ -43,9 +45,12 @@ class CamaraRTSP:
         self.frames_read = 0
         self.fps   = 0
         self.last_frame_time = time.time()
+        self.connection_state = "connecting"
+        self.last_error = None
         self.source_type = _detect_source_type(url)
-
-        self.connect()
+        self.display_size = DETECTION_CONFIG['frame_resize']
+        self.active_profile = "mosaic"
+        self.requested_profile = "mosaic"
 
         self.thread = threading.Thread(target=self.loop, daemon=True)
         self.thread.start()
@@ -58,19 +63,31 @@ class CamaraRTSP:
             self.cap.release()
             self.cap = None
 
+        self.connection_state = "connecting"
         print(f"[{self.name}] Conectando ({self.source_type})...")
+        try:
+            if self.source_type == SOURCE_LOCAL:
+                self._connect_local()
+            elif self.source_type == SOURCE_FILE:
+                self._connect_file()
+            else:
+                self._connect_rtsp()
 
-        if self.source_type == SOURCE_LOCAL:
-            self._connect_local()
-        elif self.source_type == SOURCE_FILE:
-            self._connect_file()
-        else:
-            self._connect_rtsp()
-
-        if self.cap and self.cap.isOpened():
-            print(f"[{self.name}] ✓ Conexión exitosa")
-        else:
-            print(f"[{self.name}] ✗ Error de conexión")
+            if self.cap and self.cap.isOpened():
+                self.connection_state = "connected"
+                self.last_error = None
+                print(f"[{self.name}] ✓ Conexión exitosa")
+            else:
+                self.connection_state = "disconnected"
+                self.last_error = "No se pudo abrir la fuente de video."
+                print(f"[{self.name}] ✗ Error de conexión")
+        except Exception as error:
+            self.connection_state = "disconnected"
+            self.last_error = str(error)
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+            print(f"[{self.name}] ✗ Error al conectar: {error}")
 
     def _connect_local(self):
         """Webcam / cámara USB por índice de dispositivo."""
@@ -95,33 +112,20 @@ class CamaraRTSP:
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, CAPTURE_CONFIG['buffer_size'])
 
     def _connect_rtsp(self):
-        """Stream de red (RTSP/HTTP) con timeout de 6 s."""
-        result: list = [None]
-
-        def _open():
-            c = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
-            result[0] = c
-
-        t = threading.Thread(target=_open, daemon=True)
-        t.start()
-        t.join(timeout=6.0)
-
-        if not t.is_alive() and result[0] is not None:
-            self.cap = result[0]
-        else:
-            self.cap = cv2.VideoCapture()   # cap vacío si hubo timeout
+        """Abrir stream de red en el hilo dedicado a esta cámara."""
+        self.cap = cv2.VideoCapture(self.current_url, cv2.CAP_FFMPEG)
 
         if self.cap and self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, CAPTURE_CONFIG['buffer_size'])
             self.cap.set(cv2.CAP_PROP_FPS, DETECTION_CONFIG['fps_limit'])
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, DETECTION_CONFIG['frame_resize'][0])
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, DETECTION_CONFIG['frame_resize'][1])
 
     # ── Loop de captura ───────────────────────────────────────────────────────
 
     def loop(self):
         """Loop de captura de frames en hilo separado."""
+        self.connect()
         while self.running:
+            self._apply_requested_profile()
             ret, frame = self.cap.read() if self.cap else (False, None)
 
             if not ret:
@@ -133,7 +137,7 @@ class CamaraRTSP:
 
                 self.errors += 1
                 # Reconectar: inmediato para archivos/local, ~30 s para red
-                threshold = 10 if self.source_type != SOURCE_RTSP else 300
+                threshold = 10 if self.source_type != SOURCE_RTSP else 50
                 if self.errors > threshold:
                     print(f"[{self.name}] Reconectando...")
                     self.connect()
@@ -142,10 +146,9 @@ class CamaraRTSP:
                 continue
 
             self.errors = 0
-            # Con 16 cámaras, conservar cuadros nativos (por ejemplo, 1080p)
-            # consume mucha RAM. El análisis y el mosaico usan la resolución
-            # configurada, por lo que se descarta el cuadro grande aquí.
-            target_size = DETECTION_CONFIG['frame_resize']
+            # Conservar solo el último cuadro escalado evita acumular cuadros
+            # grandes; el tamaño cambia entre mosaico y vista individual.
+            target_size = self.display_size
             if (frame.shape[1], frame.shape[0]) != target_size:
                 frame = cv2.resize(frame, target_size, interpolation=cv2.INTER_AREA)
             self.frame = frame
@@ -161,6 +164,28 @@ class CamaraRTSP:
 
     # ── API pública ───────────────────────────────────────────────────────────
 
+    def set_stream_profile(self, profile, display_size):
+        """Solicitar el perfil de mosaico o el de vista individual."""
+        if profile not in ("mosaic", "single"):
+            raise ValueError(f"Perfil de cámara no válido: {profile}")
+        self.display_size = display_size
+        self.requested_profile = profile
+
+    def _apply_requested_profile(self):
+        if self.requested_profile == self.active_profile:
+            return
+
+        self.active_profile = self.requested_profile
+        target_url = (
+            self.high_resolution_url
+            if self.active_profile == "single" and self.high_resolution_url
+            else self.url
+        )
+        if target_url != self.current_url:
+            self.current_url = target_url
+            self.frame = None
+            self.connect()
+
     def read(self):
         """Obtener último frame capturado."""
         return self.frame
@@ -173,6 +198,8 @@ class CamaraRTSP:
             "frames_leidos": self.frames_read,
             "errores":       self.errors,
             "conectada":     self.cap.isOpened() if self.cap else False,
+            "estado":        self.connection_state,
+            "ultimo_error":  self.last_error,
             "fps_real":      f"{self.fps:.1f}",
         }
 
